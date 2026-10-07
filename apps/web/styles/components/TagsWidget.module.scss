@@ -1,0 +1,12 @@
+@use '../utils/constants';
+
+.container {
+  display: inline-block;
+  margin-top: 4px;
+  max-width: 80%;
+  :global {
+    .tooltip-inner {
+      max-width: unset;
+    }
+  }
+}

@@ -1,0 +1,2063 @@
+import cloneDeep from 'lodash/cloneDeep'
+import deburr from 'lodash/deburr'
+import escapeRegExp from 'lodash/escapeRegExp'
+import findIndex from 'lodash/findIndex'
+import get from 'lodash/get'
+import intersection from 'lodash/intersection'
+import isEmpty from 'lodash/isEmpty'
+import isEqual from 'lodash/isEqual'
+import isNil from 'lodash/isNil'
+import isObject from 'lodash/isObject'
+import map from 'lodash/map'
+import omit from 'lodash/omit'
+import sortBy from 'lodash/sortBy'
+import union from 'lodash/union'
+import uniq from 'lodash/uniq'
+import upperFirst from 'lodash/upperFirst'
+import Collapse from '../components/Collapse'
+
+/**
+ * Get the human readable version of a group or profile id
+ *
+ * @param {string} id - group or profile id to convert
+ * @param {boolean} [onlyLast] - don't include Paper# token in output
+ */
+export function prettyId(id, onlyLast, includePaperNumber) {
+  if (!id || typeof id !== 'string') {
+    return ''
+  } else if (id.indexOf('~') === 0 && id.length > 1) {
+    return id.substring(1).replace(/_|\d+/g, ' ').trim()
+  } else if (id === 'everyone') {
+    return 'Everyone'
+  } else if (id === '(anonymous)' || id === '(guest)') {
+    return id
+  } else {
+    let idString = id
+    if (idString.includes('${')) {
+      const match = idString.match('{.*}')[0]
+      const newMatch = match.replace(/\//g, '.')
+      // remove value when it appears at the end of the token
+      idString = idString.replace(match, newMatch).replace('.value}', '}')
+    }
+    let tokens = idString.split('/')
+    if (onlyLast) {
+      const sliceIndex = findIndex(tokens, (token) => token.match(/^Paper\d+|Submission\d+$/))
+      const sliceOffset = includePaperNumber ? 0 : 1
+      tokens = tokens.slice(sliceIndex === -1 ? -1 : sliceIndex + sliceOffset)
+    }
+
+    const transformedId = tokens
+      .map((token) => {
+        // API v2 tokens can include strings like ${note.number}
+        if (token.includes('${')) {
+          return token
+            .replace(/\$\{(\S+)\}/g, (match, p1) => ` {${p1.split('.').pop()}}`)
+            .replace(/_/g, ' ')
+        }
+
+        let transformedToken = token
+          .replace(/^\./g, '') // journal names start with '.'
+          .replace(/\..+/g, '') // remove text after dots, ex: uai.org
+          .replace(/^-$/g, '') // remove dashes
+          .replace(/_/g, ' ') // replace undescores with spaces
+
+        // if the letters in the token are all lowercase, replace it with empty string
+        const lettersOnly = token.replace(/\d|\W/g, '')
+        if (
+          lettersOnly &&
+          lettersOnly === lettersOnly.toLowerCase() &&
+          lettersOnly !== lettersOnly.toUpperCase()
+        ) {
+          transformedToken = ''
+        }
+
+        return transformedToken
+      })
+      .filter((formattedToken) => formattedToken)
+      .join(' ')
+
+    return transformedId || idString
+  }
+}
+
+/**
+ * Get the human readable version of an invitation id
+ *
+ * @param {string} id - invitation id to convert
+ */
+export function prettyInvitationId(id) {
+  if (!id) {
+    return ''
+  }
+
+  // Only take last 2 parts of the invitation
+  const tokens = id.split('/').slice(-2)
+
+  return tokens
+    .map((token) => {
+      let prettyToken = token
+      if (token.startsWith('~')) {
+        prettyToken = prettyId(token)
+      }
+      return prettyToken
+        .replace(/^-$/g, '') // remove dashes
+        .replace(/\.\*/g, '') // remove wildcards
+        .replace(/_/g, ' ') // replace undescores with spaces
+        .trim()
+    })
+    .filter((formattedToken) => formattedToken)
+    .join(' ')
+}
+
+/**
+ * Get the human readable version of a note content object's field
+ *
+ * @param {string} fieldName - content field to convert
+ */
+export function prettyField(fieldName) {
+  if (fieldName === 'pdf') return 'PDF'
+  return fieldName?.replace(/_/g, ' ')?.split(' ')?.map(upperFirst)?.join(' ')?.trim()
+}
+
+/**
+ * Get the human readable version of a note content object's field
+ *
+ * @param {string} fieldName - content field to convert
+ * @param {string} dataType - if field is date convert date
+ */
+export function prettyContentValue(val, dataType) {
+  const valType = typeof val
+  if (dataType === 'date') {
+    return formatDateTime(val, {
+      second: undefined,
+      locale: 'en-GB',
+      timeZoneName: 'short',
+      hour12: false,
+    })
+  }
+  if (dataType === 'author{}' && Array.isArray(val)) {
+    return { isObjAuthorList: true, authors: val }
+  }
+  if (valType === 'string') {
+    return val.trim()
+  }
+  if (valType === 'number' || valType === 'boolean') {
+    return val.toString()
+  }
+  if (Array.isArray(val)) {
+    if (isObject(val[0])) {
+      return JSON.stringify(val, undefined, 2).replace(/"/g, '')
+    } else {
+      return val.join(', ')
+    }
+  }
+  if (isObject(val)) {
+    return JSON.stringify(val, undefined, 2).replace(/"/g, '')
+  }
+
+  // null, undefined, function, symbol, etc.
+  return ''
+}
+
+/**
+ * Simplified implementation of the Intl.ListFormat
+ * replace with Intl.ListFormat when support of old browsers is dropped
+ */
+class ListFormat {
+  constructor(locale, options) {
+    this.locale = locale
+    this.style = options.style
+    this.type = options.type
+  }
+
+  conjunctionMap = {
+    conjunction: ' and ',
+    disjunction: ' or ',
+    unit: ', ',
+  }
+
+  format(elements) {
+    const conjunction = this.conjunctionMap[this.type]
+    const last = elements.pop()
+    const rest = elements.join(', ')
+    return `${rest}${conjunction}${last}`
+  }
+}
+
+/**
+ * Get the human readable version of an array of group ids
+ *
+ * @param {string[]} idList - list of ids to format
+ * @param {string} style - long/short
+ * @param {string} type - conjunction/disjunction/unit
+ */
+export function prettyList(idList, style = 'long', type = 'conjunction', isRawId = true) {
+  if (!Array.isArray(idList) || !idList.length) {
+    return ''
+  }
+
+  const prettyArr = isRawId ? idList.map((id) => prettyId(id, style === 'short')) : idList
+  if (prettyArr.length === 1) {
+    return prettyArr[0]
+  }
+  return new ListFormat('en', { style, type }).format(prettyArr)
+}
+
+/**
+ * Get group ID from given invitation ID
+ *
+ * @param {string} invitationId
+ */
+export function getGroupIdfromInvitation(invitationId) {
+  // All invitation IDs should have the form group_id/-/invitation_name
+  const parts = invitationId.split('/-/')
+
+  if (parts.length === 1) {
+    // Invalid invitation
+    return null
+  }
+  return parts[0]
+}
+
+/**
+ * Get name of conference from raw bibtex string
+ *
+ * @param {string} bibtex
+ * @returns {string}
+ */
+export function getConferenceName(bibtex) {
+  if (typeof bibtex !== 'string') return null
+
+  const regex = /\n[ \t]*booktitle[ \t]*=[ \t]*\{(.+)\},?/i
+  const match = bibtex.match(regex)
+  return match ? match[1].trim().replace(/^Submitted to /, '') : null
+}
+
+/**
+ * Get name of journal from raw bibtex string
+ *
+ * @param {string} bibtex
+ * @returns {string}
+ */
+export function getJournalName(bibtex) {
+  if (typeof bibtex !== 'string') return null
+
+  const regex = /\n[ \t]*journal[ \t]*=[ \t]*\{(.+)\},?/i
+  const match = bibtex.match(regex)
+  return match ? match[1].trim().replace(/^Submitted to /, '') : null
+}
+
+/**
+ * Get name of ISSN number from raw bibtex string
+ *
+ * @param {string} bibtex
+ * @returns {string}
+ */
+export function getIssn(bibtex) {
+  if (typeof bibtex !== 'string') return null
+
+  const regex = /\n[ \t]*issn[ \t]*=[ \t]*\{(.+)\},?/i
+  const match = bibtex.match(regex)
+  return match ? match[1] : null
+}
+
+const orderCache = {}
+
+/**
+ * Get order of note content fields from invitation reply object
+ *
+ * @param {object} replyContent - invitation.reply.content
+ * @param {string} invitationId - used as a key for the order cache
+ */
+export function orderReplyFields(replyContent, invitationId) {
+  if (invitationId && orderCache[invitationId]) {
+    return orderCache[invitationId]
+  }
+
+  const orderedFields = map(
+    sortBy(
+      map(replyContent, (fieldProps, fieldName) => ({
+        field: fieldName,
+        order: fieldProps.order,
+      })),
+      ['order']
+    ),
+    'field'
+  )
+  if (invitationId) {
+    orderCache[invitationId] = orderedFields
+  }
+
+  return orderedFields
+}
+
+/**
+ * Convert timestamp stored in the database to human readable date
+ *
+ * @param {number} timestamp - the timestamp to convert
+ */
+export function formatTimestamp(timestamp) {
+  if (!timestamp) return null
+
+  const date = new Date(timestamp)
+  return date.toLocaleDateString('en-GB', {
+    hour: 'numeric',
+    minute: 'numeric',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZoneName: 'long',
+  })
+}
+
+/**
+ * Get the formatted display date for a forum based on all the available timestamps
+ *
+ * @param {timestamp} createdDate
+ * @param {timestamp} trueCreatedDate
+ * @param {timestamp} modifiedDate
+ * @param {timestamp} trueModifiedDate
+ * @param {number} createdYear - optional, only available for some notes
+ */
+export function forumDate(
+  createdDate,
+  trueCreatedDate,
+  modifiedDate,
+  trueModifiedDate,
+  createdYear,
+  pdate,
+  withTime = false,
+  withTimezone = false,
+  pDateShowYear = false
+) {
+  const mdateSettings = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    ...(withTime && { hour: 'numeric', minute: 'numeric' }),
+    ...(withTimezone && { timeZoneName: 'long' }),
+  }
+  const cdateSettings = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    ...(withTime && { hour: 'numeric', minute: 'numeric' }),
+    ...(withTimezone && { timeZoneName: 'long' }),
+  }
+
+  const cdate = createdDate || trueCreatedDate || Date.now()
+  const hasYear =
+    (typeof createdYear === 'string' && createdYear.length) ||
+    (typeof createdYear === 'number' && createdYear > 0)
+  const cdateObj = hasYear ? new Date(createdYear, 0) : new Date(cdate)
+
+  // if the cdateObj lacks the precision to represent days/months,
+  // remove them from cdateSettings. For some reason, dates are 1-indexed
+  if (
+    cdateObj.getUTCSeconds() === 0 &&
+    cdateObj.getUTCMinutes() === 0 &&
+    cdateObj.getUTCHours() === 0 &&
+    cdateObj.getUTCDate() === 1
+  ) {
+    delete cdateSettings.day
+
+    if (cdateObj.getUTCMonth() === 0) {
+      delete cdateSettings.month
+      cdateSettings.timeZone = 'UTC'
+    }
+  }
+
+  const cdateFormatted = cdateObj.toLocaleDateString('en-GB', cdateSettings)
+  const mdate = modifiedDate || trueModifiedDate
+  const mdateFormatted = mdate
+    ? new Date(mdate).toLocaleDateString('en-GB', mdateSettings)
+    : ''
+
+  if (pdate) {
+    const pdateFormatted = new Date(pdate).toLocaleDateString(
+      'en-GB',
+      pDateShowYear ? { year: 'numeric' } : mdateSettings
+    )
+    const secondaryDate = mdate
+      ? `Last Modified: ${mdateFormatted}`
+      : `Uploaded: ${cdateFormatted}`
+    return `Published: ${pdateFormatted}, ${secondaryDate}`
+  }
+
+  let mdateStr = ''
+  if (hasYear && cdate === mdate) {
+    mdateStr = ` (imported: ${new Date(cdate).toLocaleDateString('en-GB', mdateSettings)})`
+  } else if (cdate < trueCreatedDate && trueCreatedDate === trueModifiedDate) {
+    mdateStr = ` (imported: ${mdateFormatted})`
+  } else if (mdate && cdate !== mdate) {
+    mdateStr = ` (modified: ${mdateFormatted})`
+  }
+  return cdateFormatted + mdateStr
+}
+
+/**
+ * Generate a title for a note based on just the note invitation and signatures
+ *
+ * @param {string} invitationId - invitation ID of note
+ * @param {string[]} signatures - note signatures
+ * @param {boolean} isEdit
+ */
+export function buildNoteTitle(invitationId, signatures, isEdit) {
+  const formattedInvitation = prettyInvitationId(invitationId)
+  const signature = signatures?.length > 0 ? prettyId(signatures[0], true) : ''
+  const signatureMatches = signature.match(/^(Paper\d+|Submission\d+) (.+)$/)
+  const invMatches = invitationId.match(/\/(Paper\d+|Submission\d+)\//)
+  const editStr = isEdit ? ' Edit' : ''
+
+  let suffix = ''
+  if (
+    (invMatches || signatureMatches) &&
+    formattedInvitation.toLowerCase().includes('review')
+  ) {
+    const paper = invMatches ? invMatches[1] : signatureMatches[1]
+    const signatureWithoutPaper = signatureMatches ? signatureMatches[2] : signature
+    const sep = signatureWithoutPaper ? ' by ' : ''
+    suffix = ` of ${paper}${sep}${signatureWithoutPaper}`
+  } else if (signature) {
+    suffix = ` by ${signature}`
+  }
+  return formattedInvitation + editStr + suffix
+}
+
+export function buildNoteUrl(id, forum, content, options = {}) {
+  let url = `/forum`
+
+  if (options.usePaperHashUrl && content.paperhash?.value) {
+    url += `/${content.paperhash.value}`
+  } else {
+    url += `?id=${forum}`
+  }
+
+  if (id !== forum) {
+    url += `&noteId=${id}`
+  }
+
+  if (options.referrer) {
+    url += `&referrer=${encodeURIComponent(options.referrer)}`
+  }
+
+  return url
+}
+
+/**
+ * Takes a string with the format aaa-bbb-1 and returns a string with the
+ * number incremented by 1, e.g. aaa-bbb-2. Also checks for _ and space as separators.
+ *
+ * @param {string} title - the title to increment
+ * @returns {string} the incremented title
+ */
+function incrementNoteTitle(title) {
+  let titleSplit = (title || '').split(/[-_ ]+/)
+  const titleSuffix = Number.parseInt(titleSplit[titleSplit.length - 1], 10)
+  if (Number.isNaN(titleSuffix)) {
+    titleSplit.push(1)
+  } else {
+    titleSplit = titleSplit.slice(0, -1)
+    titleSplit.push(titleSuffix + 1)
+  }
+  return titleSplit.join('-')
+}
+
+/**
+ * Clone a assignment config note object and update title and status
+ *
+ * @param {object} note - the assignment note to clone
+ * @returns {object} the cloned note with updated title and status
+ */
+export function cloneAssignmentConfigNote(note) {
+  const clone = cloneDeep(
+    omit(note, ['id', 'cdate', 'forum', 'number', 'tcdate', 'tmdate', '_id'])
+  )
+  clone.content.status = 'Initialized'
+  clone.content.error_message = ''
+  clone.content.randomized_fraction_of_opt = ''
+  clone.content.title = incrementNoteTitle(note.content.title || note.content.label)
+  return clone
+}
+
+/**
+ * Clone a v2 assignment config note object and update title and status
+ *
+ * @param {object} note - the assignment note to clone
+ * @returns {object} the cloned note with updated title and status
+ */
+export function cloneAssignmentConfigNoteV2(note) {
+  const clone = cloneDeep(
+    omit(note, ['id', 'cdate', 'forum', 'number', 'tcdate', 'tmdate', '_id'])
+  )
+  clone.content.status = { ...clone.content.status, value: 'Initialized' }
+  clone.content.error_message = { ...clone.content.error_message, value: '' }
+  clone.content.randomized_fraction_of_opt = {
+    ...clone.content.randomized_fraction_of_opt,
+    value: '',
+  }
+  clone.content.title = {
+    ...clone.content.title,
+    value: incrementNoteTitle(note.content.title.value || note.content.label.value),
+  }
+  return clone
+}
+
+/**
+ * Returns an object with the keys being all the fields that are different between
+ * the content objects of the two provided notes.
+ *
+ * @param {object} leftNote - first note object
+ * @param {object} rightNote - second note object
+ */
+export function noteContentDiff(leftNote, rightNote) {
+  const allContentKeys = Array.from(
+    new Set([...Object.keys(leftNote.content), ...Object.keys(rightNote.content)])
+  ).filter((key) => !key.startsWith('_') && key !== 'pdf' && key !== 'paperhash')
+
+  return allContentKeys.reduce((result, key) => {
+    if (!isEqual(leftNote.content[key], rightNote.content[key])) {
+      const value1 = isNil(leftNote.content[key]) ? null : leftNote.content[key]
+      const value2 = isNil(rightNote.content[key]) ? null : rightNote.content[key]
+
+      result[key] = { left: value1, right: value2 }
+    }
+    return result
+  }, {})
+}
+
+/**
+ * Returns an object with the keys being all the fields that are different between
+ * the content objects of the two provided edits.
+ *
+ * @param {object} leftEdit - first edit object
+ * @param {object} rightEdit - second edit object
+ */
+export function editNoteContentDiff(leftEdit, rightEdit) {
+  const dateKeys = ['cdate', 'tcdate', 'mdate', 'tmdate']
+  const omitKeys = ['mdate', 'tmdate', 'note.content.pdf', 'note.content.paperhash']
+
+  const getAllKeys = (fieldValue, prefixParam = null) => {
+    const keys = []
+    Object.keys(fieldValue ?? {}).forEach((key) => {
+      const prefix = prefixParam ? `${prefixParam}.${key}` : key
+      if (typeof fieldValue[key] === 'object' && !Array.isArray(fieldValue[key])) {
+        keys.push(...getAllKeys(fieldValue[key], prefix))
+        return
+      }
+      keys.push(prefix)
+    })
+    return keys
+  }
+
+  const formatValue = (key, value) => {
+    if (isNil(value)) return null
+    if (key.split('.').some((p) => dateKeys.includes(p))) return formatTimestamp(value)
+    return value
+  }
+
+  const constructDiff = (keys) =>
+    keys.reduce((result, key) => {
+      const leftValue = key.split('.').reduce((p, q) => p?.[q], leftEdit)
+      const rightValue = key.split('.').reduce((p, q) => p?.[q], rightEdit)
+
+      if (!isEqual(leftValue, rightValue)) {
+        result[key] = {
+          left: formatValue(key, leftValue),
+          right: formatValue(key, rightValue),
+        }
+      }
+      return result
+    }, {})
+
+  const allKeys = Array.from(new Set([...getAllKeys(leftEdit), ...getAllKeys(rightEdit)]))
+    .map((p) => p.toLowerCase())
+    .filter((key) => !key.startsWith('_') && omitKeys.includes(key) === false)
+
+  const editNoteDifference = constructDiff(
+    allKeys.filter((p) => p.startsWith('note.') && !p.startsWith('note.content.'))
+  )
+  const editNoteContentDifference = constructDiff(
+    allKeys.filter((p) => p.startsWith('note.content.'))
+  )
+  const otherEditDifference = constructDiff(allKeys.filter((p) => !p.startsWith('note.')))
+  return {
+    edit: otherEditDifference,
+    editNote: editNoteDifference,
+    editNoteContent: editNoteContentDifference,
+  }
+}
+
+/**
+ * General utility function to pluralize any english word. Based on answer here:
+ * https://stackoverflow.com/a/27194360/125836
+ *
+ * @param {string} word - word or phrase to pluralize
+ */
+export function pluralizeString(word) {
+  if (typeof word !== 'string') return null
+
+  const plural = {
+    '(quiz)$': '$1zes',
+    '^(ox)$': '$1en',
+    '([m|l])ouse$': '$1ice',
+    '(matr|vert|ind)ix|ex$': '$1ices',
+    '(x|ch|ss|sh)$': '$1es',
+    '([^aeiouy]|qu)y$': '$1ies',
+    '(hive)$': '$1s',
+    '(?:([^f])fe|([lr])f)$': '$1$2ves',
+    '(shea|lea|loa|thie)f$': '$1ves',
+    sis$: 'ses',
+    '([ti])um$': '$1a',
+    '(tomat|potat|ech|her|vet)o$': '$1oes',
+    '(bu)s$': '$1ses',
+    '(alias)$': '$1es',
+    '(octop)us$': '$1i',
+    '(ax|test)is$': '$1es',
+    '(us)$': '$1es',
+    '([^s]+)$': '$1s',
+  }
+  const irregular = {
+    move: 'moves',
+    foot: 'feet',
+    goose: 'geese',
+    sex: 'sexes',
+    child: 'children',
+    man: 'men',
+    tooth: 'teeth',
+    person: 'people',
+  }
+  const uncountable = [
+    'sheep',
+    'fish',
+    'deer',
+    'moose',
+    'series',
+    'species',
+    'money',
+    'rice',
+    'information',
+    'equipment',
+    'bison',
+    'cod',
+    'offspring',
+    'pike',
+    'salmon',
+    'shrimp',
+    'swine',
+    'trout',
+    'aircraft',
+    'hovercraft',
+    'spacecraft',
+    'sugar',
+    'tuna',
+    'you',
+    'wood',
+  ]
+
+  if (uncountable.includes(word.toLowerCase())) {
+    return word
+  }
+
+  for (const w in irregular) {
+    if (Object.prototype.hasOwnProperty.call(irregular, w)) {
+      const pattern = new RegExp(`${w}$`, 'i')
+      const replace = irregular[w]
+      if (pattern.test(word)) {
+        return word.replace(pattern, replace)
+      }
+    }
+  }
+
+  for (const reg in plural) {
+    if (Object.prototype.hasOwnProperty.call(plural, reg)) {
+      const pattern = new RegExp(reg, 'i')
+      if (pattern.test(word)) {
+        return word.replace(pattern, plural[reg])
+      }
+    }
+  }
+
+  return word
+}
+
+/**
+ * Get the singular form of a role name
+ *
+ * @param {string} roleName - role name to convert
+ */
+export function getSingularRoleName(roleName) {
+  return roleName?.endsWith('s') ? roleName.slice(0, -1) : roleName
+}
+
+/**
+ * Get the hash fragment format of a role name
+ *
+ * @param {string} roleName - role name to convert
+ */
+export function getRoleHashFragment(roleName) {
+  return getSingularRoleName(roleName).toLowerCase().replaceAll('_', '-')
+}
+
+/**
+ * @param {string} word - word to remove accent from
+ * @param {boolean} toLowercase - whether to return lowercase or not
+ */
+export function deburrString(word, toLowercase = false) {
+  return deburr(toLowercase ? word.toLowerCase() : word)
+}
+
+/**
+ * @param {string} fullname - the name for comparison
+ * @returns {string}
+ */
+export function normalizeName(fullname) {
+  return fullname
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // remove ́ generated NFKD normalization of é
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+/**
+ * @param {number} count
+ * @param {string} singular - the singular form
+ * @param {string} plural - the plural form
+ * @param {boolean} include - include the number in the output
+ * @returns {string}
+ */
+export function inflect(count, singular, plural, include) {
+  const validCount = typeof count === 'number' ? count : 0
+  const word = validCount === 1 ? singular : plural
+  if (!include) {
+    return word
+  }
+  return `${validCount} ${word}`
+}
+
+/**
+ * Takes 3 arrays of invitations (note, tag and edge invitations) and returns an object
+ * with formatted invitations grouped by group name (if skipGrouping is set to false)
+ *
+ * @param {object[][]} array of invitation arrays
+ * @param {boolean} skipGrouping - only do the formatting if set to true
+ * @returns {object}
+ */
+export function formatTasksData(
+  [noteInvitations, tagInvitations, edgeInvitations],
+  skipGrouping = false
+) {
+  const groupedInvitations = {}
+  const dateOptions = {
+    hour: 'numeric',
+    minute: 'numeric',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZoneName: 'long',
+  }
+
+  // Helper functions
+  const getDueDateStatus = (date) => {
+    const day = 24 * 60 * 60 * 1000
+    const diff = Date.now() - date.getTime()
+
+    if (diff > 0) {
+      return 'expired'
+    }
+    if (diff > -3 * day) {
+      return 'warning'
+    }
+    return ''
+  }
+
+  const noteHasAllRequiredFields = (invitation, note) => {
+    const requiredFields = Object.entries(invitation?.edit?.note?.content ?? {}).flatMap(
+      ([field, fieldDescription]) => {
+        if (
+          !fieldDescription.value?.param ||
+          fieldDescription.value.param.const ||
+          fieldDescription.value?.param?.optional === true
+        )
+          return []
+        return field
+      }
+    )
+
+    return requiredFields.every((field) => !isNil(note.content?.[field]?.value))
+  }
+
+  const formatInvitation = (invitation) => {
+    const inv = { ...invitation }
+    const group = inv.domain ?? inv.id.split('/-/')[0]
+
+    const duedate = new Date(inv.duedate)
+    inv.dueDateStr = duedate.toLocaleDateString('en-GB', dateOptions)
+    inv.dueDateStatus = getDueDateStatus(duedate)
+    inv.groupId = inv.id.split('/-/')[0]
+
+    if (!inv.details) {
+      inv.details = {}
+    }
+
+    if (inv.noteInvitation) {
+      if (inv.details.repliedNotes?.length > 0) {
+        if (
+          inv.details.repliedNotes?.some((repliedNote) =>
+            noteHasAllRequiredFields(inv, repliedNote)
+          )
+        ) {
+          inv.completed = true
+        } else {
+          inv.hasMissingFields = true
+        }
+      } else if (inv.details.repliedEdits?.length > 0) {
+        const noteIds = new Set()
+        const sortedEdits = inv.details.repliedEdits.sort((a, b) => a.tcdate - b.tcdate)
+        sortedEdits.forEach((edit) => {
+          if (!edit.note) return
+          if (edit.note.ddate) {
+            noteIds.delete(edit.note.id)
+          } else {
+            noteIds.add(edit.note.id)
+          }
+        })
+        const minReplies = inv.minReplies || 1
+        inv.completed = noteIds.size >= minReplies
+      }
+      // can't locate a unique noteId when there are multiple repliedNotes
+      inv.noteId =
+        inv.details.repliedNotes?.length === 1
+          ? inv.details.repliedNotes[0].id
+          : inv.edit.note.replyto
+
+      if (isEmpty(inv.details.replytoNote)) {
+        // Some invitations returned by the API do not contain replytoNote
+        inv.details.replytoNote = {
+          forum: inv.edit.note.forum,
+        }
+      }
+    } else if (inv.tagInvitation) {
+      // Get num replied tags or edges
+      const repliedCount =
+        (inv.details.repliedTags && inv.details.repliedTags.length) ||
+        (inv.details.repliedEdges && inv.details.repliedEdges.length)
+
+      const completionCount = inv.taskCompletionCount || inv.minReplies
+      if (completionCount && repliedCount && repliedCount >= completionCount) {
+        inv.completed = true
+      }
+    }
+
+    if (skipGrouping) return inv
+
+    if (groupedInvitations[group]) {
+      groupedInvitations[group].invitations.push(inv)
+      if (!inv.completed) {
+        groupedInvitations[group].numPending += 1
+      } else {
+        groupedInvitations[group].numCompleted += 1
+      }
+    } else {
+      groupedInvitations[group] = {
+        invitations: [inv],
+        numPending: inv.completed ? 0 : 1,
+        numCompleted: inv.completed ? 1 : 0,
+      }
+    }
+  }
+
+  const isNotPublicInvitation = (invitation) =>
+    intersection(['everyone', '~', '(guest)', '(anonymous)'], invitation.invitees).length === 0
+
+  if (skipGrouping) {
+    return tagInvitations
+      .concat(edgeInvitations, noteInvitations)
+      .filter(isNotPublicInvitation)
+      .sort((a, b) => a.duedate - b.duedate)
+      .map((p) => {
+        try {
+          return formatInvitation(p)
+        } catch (error) {
+          // oxlint-disable-next-line no-console
+          console.error(error)
+          return null
+        }
+      })
+  }
+
+  tagInvitations
+    .concat(edgeInvitations, noteInvitations)
+    .filter(isNotPublicInvitation)
+    .sort((a, b) => a.duedate - b.duedate)
+    .forEach((p) => {
+      try {
+        formatInvitation(p)
+      } catch (error) {
+        // oxlint-disable-next-line no-console
+        console.error(error)
+      }
+    })
+
+  return groupedInvitations
+}
+
+/**
+ * Format unix epoch to en-US locale string based on formatter provided
+ * default format is in the form of "Jun 08, 2020, 11:59:39 AM"
+ *
+ * @param {number} timestamp
+ * @param {object} option
+ */
+export function formatDateTime(timestamp, option = {}) {
+  if (!timestamp) return null
+
+  const defaultOption = {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: undefined,
+    timeZone: undefined,
+    hour12: true,
+  }
+  option = { ...defaultOption, ...option }
+
+  const dateSettings = {
+    day: option.day,
+    month: option.month,
+    year: option.year,
+    hour: option.hour,
+    minute: option.minute,
+    second: option.second,
+    hour12: option.hour12,
+    ...(option.timeZoneName && { timeZoneName: option.timeZoneName }),
+    ...(option.timeZone && { timeZone: option.timeZone }),
+    ...(option.weekday && { weekday: option.weekday }),
+  }
+  return new Date(timestamp).toLocaleDateString(option.locale ?? 'en-US', dateSettings)
+}
+
+// Order matters
+const browserPatterns = [
+  ['Samsung Internet', /SamsungBrowser\//],
+  ['UC Browser', /UCBrowser\//],
+  ['Yandex Browser', /YaBrowser\//],
+  ['Edge', /Edg(?:e|A|iOS)?\//],
+  ['Opera', /OPR\/|OPiOS\/|Opera/],
+  ['Firefox', /Firefox\/|FxiOS\//],
+  ['Headless Chrome', /HeadlessChrome\//],
+  ['openreview-py', /openreview-py\//],
+  ['API client', /python-requests\/|curl\/|okhttp\/|Wget\//],
+  ['Chrome', /Chrome\/|CriOS\//],
+  ['Safari', /Safari\//],
+]
+const osPatterns = [
+  ['iOS', /iPhone|iPad|iPod/],
+  ['Android', /Android/],
+  ['Windows', /Windows/],
+  ['macOS', /Macintosh|Mac OS X/],
+  ['ChromeOS', /CrOS/],
+  ['Linux', /Linux/],
+]
+
+/**
+ * Describe the browser and OS of a sign-in user agent, e.g. "Chrome on macOS".
+ * The UA is client-controlled, so unrecognized values are never returned raw.
+ *
+ * @param {string} userAgent
+ */
+export function getDeviceFromUserAgent(userAgent) {
+  if (typeof userAgent !== 'string' || !userAgent) return 'Device not reported'
+  const browser = browserPatterns.find(([, pattern]) => pattern.test(userAgent))?.[0]
+  const os = osPatterns.find(([, pattern]) => pattern.test(userAgent))?.[0]
+  if (!browser && !os) return 'Unknown device'
+  return [browser, os].filter(Boolean).join(' on ')
+}
+
+/**
+ * Test if a email is valid
+ * similar to the one used in view.js but for components to use
+ *
+ * @param {string} email
+ */
+export function isValidEmail(email) {
+  if (!email) return false
+  if (email === process.env.SUPER_USER) return true // to allow su to login
+  const emailRegex =
+    /^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
+  return emailRegex.test(email.toLowerCase())
+}
+
+/**
+ * check for same password
+ *
+ * @param {string} newPassword
+ * @param {string} confirmPassword
+ */
+export function isValidPassword(newPassword, confirmPassword) {
+  return newPassword && confirmPassword && newPassword === confirmPassword
+}
+
+/**
+ * Get url based on group id, tilde id, or email
+ *
+ * @param {string} groupId
+ * @param {boolean} editMode - edit mode of group
+ */
+export function urlFromGroupId(groupId, editMode = false) {
+  const commonGroups = ['everyone', '(anonymous)', '(guest)']
+  if (!groupId || commonGroups.indexOf(groupId) !== -1) {
+    return ''
+  } else if (groupId.indexOf('~') === 0) {
+    return `/profile?id=${groupId}`
+  } else if (groupId.indexOf('@') !== -1) {
+    return `/profile?email=${groupId}`
+  }
+  return `/group${editMode ? '/edit' : ''}?id=${groupId}`
+}
+
+/**
+ * Test if a url is valid
+ * moved from profile-view
+ *
+ * @param {string} url
+ */
+export function isValidURL(url) {
+  if (!url) return false
+  const urlRegex =
+    /^(?:(?:https?):\/\/)(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:[a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?)(?:\.[a-z\u00a1-\uffff0-9](?:[a-z\u00a1-\uffff0-9-]{0,61}[a-z\u00a1-\uffff0-9])?)*(?:\.(?:[a-z\u00a1-\uffff]{2,}))\.?)(?::\d{2,5})?(?:[/?#]\S*)?$/i
+  return urlRegex.test(url)
+}
+
+/**
+ * Test if a domain is valid
+ * moved from profile-view
+ *
+ * @param {string} domain
+ */
+export function isValidDomain(domain) {
+  if (!domain) return false
+  const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/
+  return domainRegex.test(domain)
+}
+
+/**
+ * Test if a year is valid
+ * moved from profile-view
+ *
+ * @param {number} year
+ */
+export function isValidYear(year) {
+  if (!Number.isInteger(year)) return false
+  const validYearRegex = /^(19|20)\d{2}$/ // 1900~2099
+  return validYearRegex.test(year)
+}
+
+// #region util functions for autoComplete and venue search
+export function truncateAroundMatch(label, terms) {
+  const maxCharLength = 85
+  if (label.length <= maxCharLength) return label
+
+  const m = label.match(new RegExp(terms.map(escapeRegExp).join('|'), 'i'))
+  if (!m) return `${label.slice(0, maxCharLength)}…`
+
+  const matchLength = m[0].length
+  const budget = maxCharLength - matchLength
+  const half = Math.floor(budget / 2)
+  let start = m.index - half
+  let end = m.index + matchLength + half
+  if (start < 0) {
+    end -= start
+    start = 0
+  }
+  if (end > label.length) {
+    start = Math.max(0, start - (end - label.length))
+    end = label.length
+  }
+  const prefix = start > 0 ? '…' : ''
+  const suffix = end < label.length ? '…' : ''
+  return `${prefix}${label.slice(start, end)}${suffix}`
+}
+
+export function highlightMatch(text, terms) {
+  const pattern = terms.map(escapeRegExp).join('|')
+  if (!text || !pattern) return text
+  const segments = text.split(new RegExp(`(${pattern})`, 'gi'))
+  return segments.map((segment, index) =>
+    index % 2 === 1 ? <strong key={index}>{segment}</strong> : segment
+  )
+}
+
+const contentToString = (stringOrArray) => {
+  if (Array.isArray(stringOrArray)) {
+    return stringOrArray.join(', ')
+  } else if (typeof stringOrArray === 'string') {
+    return stringOrArray
+  } else {
+    return ''
+  }
+}
+
+/**
+ * return a list of unique tokens that match the termRegex
+ *
+ * @param {object[]} docArray - an array containing the content objects in the response (result.notes)
+ */
+export function getTokenObjects(docArray, searchTerm) {
+  const contentArray = docArray?.map((docObj) => ({
+    content: docObj.content,
+    version: docObj.version,
+  }))
+  const termRegex = new RegExp(`${searchTerm}.*`, 'i')
+
+  const tokens = [
+    ...new Set(
+      contentArray
+        .map((contentObj) =>
+          Object.values(contentObj.content ?? {})
+            ?.flatMap((val) => {
+              if (contentObj.version === 2) val = val?.value
+              if (Array.isArray(val)) return val
+              if (typeof val === 'string')
+                return (
+                  val
+                    .toLowerCase()
+                    // oxlint-disable-next-line no-useless-escape
+                    .replace(/'\"/g, '')
+                    .replace(/\W/g, ' ')
+                    .replace(/\s\s+/g, ' ')
+                    .split(' ')
+                )
+
+              return []
+            })
+            .map((p) => p)
+        )
+        .flat(Infinity)
+        .filter((token) => {
+          try {
+            return token.match(termRegex)
+          } catch (error) {
+            return false
+          }
+        })
+    ),
+  ]
+
+  const autocompleteObjects = tokens.map((token) => ({
+    value: token,
+    label: truncateAroundMatch(token, [searchTerm]),
+    section: 'tokens',
+  }))
+  return autocompleteObjects
+}
+
+export function getTitleObjects(docArray, searchTerm) {
+  const termRegex = new RegExp(`${escapeRegExp(searchTerm)}.*`, 'i')
+  return docArray
+    .map((docObj) => {
+      const contentObj = docObj.content
+      const title = docObj.version === 2 ? contentObj.title?.value : contentObj.title
+      const authors = getNoteAuthors(docObj, docObj.version === 2)
+      return {
+        value: isEmpty(title) ? '' : title,
+        forum: docObj?.forum ?? '',
+        id: docObj.id,
+        label: isEmpty(title) ? '' : truncateAroundMatch(title, [searchTerm]),
+        subtitle: isEmpty(authors)
+          ? ''
+          : truncateAroundMatch(contentToString(authors), [searchTerm]),
+        authors: isEmpty(authors) ? '' : authors,
+        section: 'titles',
+      }
+    })
+    .filter(
+      (titleObj) =>
+        (!isEmpty(titleObj.value) && titleObj.value.match(termRegex)) ||
+        (!isEmpty(titleObj.authors) && contentToString(titleObj.authors).match(termRegex))
+    )
+}
+// #endregion
+
+export const timezoneOptions = [
+  { label: '(GMT -12:00) Eniwetok, Kwajalein', value: 'Etc/GMT+12' },
+  { label: '(GMT -11:00) Midway Island, Samoa', value: 'Pacific/Samoa' },
+  { label: '(GMT -10:00) Hawaii', value: 'Etc/GMT+10' },
+  { label: '(GMT -9:00) Alaska', value: 'Etc/GMT+9' },
+  { label: '(GMT -8:00) Pacific Time (US & Canada)', value: 'Etc/GMT+8' },
+  { label: '(GMT -7:00) Mountain Time (US & Canada)', value: 'Etc/GMT+7' },
+  { label: '(GMT -6:00) Central Time (US & Canada), Mexico City', value: 'Etc/GMT+6' },
+  { label: '(GMT -5:00) Eastern Time (US & Canada), Bogota, Lima', value: 'Etc/GMT+5' },
+  { label: '(GMT -4:30) Caracas', value: 'America/Caracas' },
+  { label: '(GMT -4:00) Atlantic Time (Canada), Puerto Rico, La Paz', value: 'Etc/GMT+4' },
+  { label: '(GMT -3:30) Newfoundland', value: 'Canada/Newfoundland' },
+  {
+    label: '(GMT -3:00) Brazil, Buenos Aires, Georgetown',
+    value: 'America/Argentina/Buenos_Aires',
+  },
+  { label: '(GMT -2:00) Mid-Atlantic', value: 'Etc/GMT+2' },
+  { label: '(GMT -1:00) Azores, Cape Verde Islands', value: 'Atlantic/Azores' },
+  { label: '(GMT) Western Europe Time, London, Lisbon, Casablanca', value: 'UTC' },
+  { label: '(GMT +1:00) Brussels, Copenhagen, Madrid, Paris', value: 'Europe/Paris' },
+  { label: '(GMT +2:00) Kaliningrad, South Africa', value: 'Europe/Kaliningrad' },
+  { label: '(GMT +3:00) Baghdad, Riyadh, Moscow, St. Petersburg', value: 'Europe/Moscow' },
+  { label: '(GMT +3:30) Tehran', value: 'Asia/Tehran' },
+  { label: '(GMT +4:00) Abu Dhabi, Muscat, Baku, Tbilisi', value: 'Asia/Muscat' },
+  { label: '(GMT +4:30) Kabul', value: 'Asia/Kabul' },
+  {
+    label: '(GMT +5:00) Ekaterinburg, Islamabad, Karachi, Tashkent',
+    value: 'Asia/Yekaterinburg',
+  },
+  { label: '(GMT +5:30) Bombay, Calcutta, Madras, New Delhi', value: 'Asia/Calcutta' },
+  { label: '(GMT +5:45) Kathmandu, Pokhara', value: 'Asia/Kathmandu' },
+  { label: '(GMT +6:00) Almaty, Dhaka, Colombo', value: 'Asia/Dhaka' },
+  { label: '(GMT +6:30) Yangon, Mandalay', value: 'Asia/Yangon' },
+  { label: '(GMT +7:00) Bangkok, Hanoi, Jakarta', value: 'Asia/Bangkok' },
+  { label: '(GMT +8:00) Beijing, Perth, Singapore, Hong Kong', value: 'Asia/Hong_Kong' },
+  { label: '(GMT +8:45) Eucla', value: 'Australia/Eucla' },
+  { label: '(GMT +9:00) Tokyo, Seoul, Osaka, Sapporo, Yakutsk', value: 'Asia/Tokyo' },
+  { label: '(GMT +9:30) Adelaide, Darwin', value: 'Australia/Adelaide' },
+  { label: '(GMT +10:00) Eastern Australia, Guam, Vladivostok', value: 'Pacific/Guam' },
+  { label: '(GMT +10:30) Lord Howe Island', value: 'Australia/Lord_Howe' },
+  { label: '(GMT +11:00) Magadan, Solomon Islands, New Caledonia', value: 'Asia/Magadan' },
+  { label: '(GMT +11:30) Norfolk Island', value: 'Pacific/Norfolk' },
+  { label: '(GMT +12:00) Auckland, Wellington, Fiji, Kamchatka', value: 'Pacific/Fiji' },
+  { label: '(GMT +12:45) Chatham Islands', value: 'Pacific/Chatham' },
+  { label: '(GMT +13:00) Apia, Nukualofa', value: 'Pacific/Apia' },
+  { label: '(GMT +14:00) Line Islands, Tokelau', value: 'Etc/GMT-14' },
+]
+
+/**
+ * get default timezone label value obj of user...
+ *
+ */
+export function getDefaultTimezone() {
+  const offsetMinutes = new Date().getTimezoneOffset()
+  const userOffsetStr =
+    offsetMinutes === 0
+      ? '(GMT)'
+      : `(GMT ${offsetMinutes > 0 ? '-' : '+'}${Math.floor(Math.abs(offsetMinutes / 60))}:${
+          offsetMinutes % 60 ? Math.abs(offsetMinutes % 60) : '00'
+        })`
+  return timezoneOptions.find((option) => option.label.startsWith(userOffsetStr)) ?? null
+}
+
+/**
+ * get meta invitation id to use when editing an invitation
+ */
+export function getMetaInvitationId(invitation) {
+  const metaInvitationId = `${invitation.domain}/-/Edit`
+  return metaInvitationId
+}
+
+/**
+ * get a valid year/null from null/undefined/string/integer
+ *
+ */
+export function getStartEndYear(year) {
+  if (!year) return null
+  const parsedYear = Number.parseInt(year, 10)
+  if (Number.isInteger(parsedYear)) return year
+  return null
+}
+
+/**
+ * get name string from profile name object
+ *
+ */
+export function getNameString(nameObj) {
+  if (!nameObj) return null
+  return nameObj.fullname
+}
+
+/**
+ * True and False options for select
+ */
+export const trueFalseOptions = [
+  { value: true, label: 'True' },
+  { value: false, label: 'False' },
+]
+
+/**
+ * Split a string into an array of words by comma
+ */
+export function stringToArray(value) {
+  return value?.split(',')?.flatMap((p) => (p.trim() ? p.trim() : []))
+}
+
+/**
+ * Return a string usable by DOM components for the className attribute
+ */
+export function classNames(...classes) {
+  return classes.filter(Boolean).join(' ') || null
+}
+
+/**
+ * pretty invitation id for tasks page
+ */
+export function prettyTasksInvitationId(invitationId, domain) {
+  return invitationId
+    .replace(domain, '')
+    .replace(/\/-\/|\/|_/g, ' ') // Replace /-/, /, _ with spaces
+    .trim()
+}
+
+function getReaders(invitation, readerInputValues, signatures, isEdit = false) {
+  let readers
+  if (invitation.edit) {
+    readers = isEdit ? invitation.edit.readers : invitation.edit.note?.readers
+  } else {
+    // oxlint-disable-next-line prefer-destructuring
+    readers = invitation.reply.readers
+  }
+  let inputValues = [...readerInputValues]
+
+  let invitationValues = []
+  if (readers['values-dropdown']) {
+    invitationValues = readers['values-dropdown'].map((p) => p.id ?? p)
+  } else if (readers['value-dropdown-hierarchy']) {
+    invitationValues = readers['value-dropdown-hierarchy']
+  } else if (readers['values-checkbox']) {
+    invitationValues = readers['values-checkbox']
+  } else if (readers.enum) {
+    invitationValues = readers.enum.map((p) => p.id ?? p)
+  }
+
+  // Add signature if exists in the invitation readers list
+  if (signatures && signatures.length && inputValues.includes('everyone') === false) {
+    let signatureId = signatures[0]
+
+    // Where the signature is an AnonReviewer and it is not selected in the readers value
+    const index = Math.max(
+      signatureId.indexOf('AnonReviewer'),
+      signatureId.indexOf('Reviewer_')
+    )
+    if (index >= 0) {
+      const reviewersSubmittedId = signatureId.slice(0, index).concat('Reviewers/Submitted')
+      const reviewersId = signatureId.slice(0, index).concat('Reviewers')
+
+      if (
+        isEmpty(intersection(inputValues, [signatureId, reviewersSubmittedId, reviewersId]))
+      ) {
+        if (invitationValues.includes(signatureId)) {
+          inputValues.push(signatureId)
+        } else if (invitationValues.includes(reviewersSubmittedId)) {
+          inputValues = union(inputValues, [reviewersSubmittedId])
+        } else if (invitationValues.includes(reviewersId)) {
+          inputValues = union(inputValues, [reviewersId])
+        }
+      }
+    } else {
+      const acIndex = Math.max(
+        signatureId.indexOf('Area_Chair1'),
+        signatureId.indexOf('Area_Chair_')
+      )
+      if (acIndex >= 0) {
+        signatureId = signatureId.slice(0, acIndex).concat('Area_Chairs')
+      }
+
+      if (invitationValues.includes(signatureId)) {
+        inputValues = union(inputValues, [signatureId])
+      }
+    }
+  }
+
+  return inputValues
+}
+
+function replaceCopiedValues(content, invitationReplyContent, original) {
+  Object.entries(invitationReplyContent).forEach(([key, value]) => {
+    if (value['value-copied']) {
+      // some of the field values are surrounded by curly brackets, remove them
+      const field = value['value-copied'].replace(/{|}/g, '')
+      content[key] = get(value, 'value-copied')
+    }
+
+    if (value['values-copied']) {
+      // some of the field values are surrounded by curly brackets, remove them
+      const values = value['values-copied']
+      values.forEach((p) => {
+        if (p.startsWith('{')) {
+          const field = p.slice(1, -1)
+          let fieldValue = get(original, field)
+          if (!Array.isArray(fieldValue)) {
+            fieldValue = [fieldValue]
+          }
+          content[key] = union(content[key] || [], fieldValue)
+        } else {
+          content[key] = union(content[key] || [], [p])
+        }
+      })
+    }
+
+    if (typeof value === 'object' && !isNil(content)) {
+      replaceCopiedValues(content[key], value, original)
+    }
+  })
+}
+
+function getCopiedValues(note, invitationReply) {
+  const noteCopy = cloneDeep(note)
+  replaceCopiedValues(noteCopy, invitationReply, note)
+  return noteCopy
+}
+
+/**
+ * Get ordered field names based on order property
+ *
+ * @param {object} invitation - invitation object
+ * @param {Array} ignoreFields - fields to ignore
+ * @returns Array
+ */
+export function orderNoteInvitationFields(invitation, ignoreFields = []) {
+  const invitationContent =
+    invitation.apiVersion === 2
+      ? invitation.edit?.note?.content
+      : (invitation.reply.content ?? {})
+  return Object.keys(invitationContent)
+    .filter((p) => !ignoreFields.includes(p))
+    .sort(
+      (a, b) => (invitationContent[a]?.order ?? 999) - (invitationContent[b]?.order ?? 999)
+    )
+}
+
+/**
+ * save text field content to localStorage
+ *
+ * @param {object} user - user object
+ * @param {string} invitationId - id of invitation
+ * @param {string|null} noteId - id of note
+ * @param {string} replyToNoteId - id of replyToNote
+ * @param {string} fieldName - name of the field rendered
+ * @returns the key
+ */
+export function getAutoStorageKey(user, invitationId, noteId, replyToNoteId, fieldName) {
+  const userIdForKey = !user ? 'guest' : user.id
+  return [
+    userIdForKey,
+    noteId ?? 'null',
+    replyToNoteId ?? 'null',
+    invitationId ?? 'null',
+    fieldName,
+  ].join('|')
+}
+
+/**
+ * get the pdf download link of a note
+ * modified from handlebars helper pdfUrl for authorConsole
+ *
+ * @param {object} note - user object
+ * @param {boolean} invitationId - id of invitation
+ * @param {boolean} isV2Note - version of note
+ * @returns {string}
+ */
+export function getNotePdfUrl(note, isReference, isV2Note) {
+  if (!note.content) return ''
+
+  const pdfValue = isV2Note ? note.content.pdf?.value : note.content.pdf
+  if (!pdfValue) return ''
+
+  let urlPath
+  if (isReference) {
+    urlPath = isV2Note ? '/notes/edits/pdf' : '/references/pdf'
+  } else {
+    urlPath = '/pdf'
+  }
+  const nameParam = urlPath === '/pdf' ? '' : '&name=pdf'
+
+  return `${urlPath}?id=${note.id}${nameParam}`
+}
+
+/**
+ * build reader for v1 invitation
+ *
+ * @param {object} invitation
+ * @param {string} fieldName - the field to interpret
+ * @param {string} profileId - the tilde id to replace {signatures}
+ * @param {string} noteNumber - the paper number to replace Paper.*
+ * @returns {string}
+ */
+export function buildArray(invitation, fieldName, profileId, noteNumber) {
+  if (invitation.reply?.[fieldName]?.values) return invitation.reply[fieldName].values
+  if (invitation.reply?.[fieldName]?.['values-copied'])
+    return invitation.reply[fieldName]['values-copied']
+      .map((value) => {
+        if (value === '{signatures}') return profileId
+        if (value[0] === '{') return null
+        return value
+      })
+      .filter((p) => p)
+  if (invitation.reply?.[fieldName]?.['values-regex'])
+    return invitation.reply[fieldName]['values-regex']
+      .split('|')
+      .map((value) => {
+        if (value.indexOf('Paper.*') !== -1)
+          return value.replace('Paper.*', `Paper${noteNumber}`)
+        return value
+      })
+      .filter((p) => p)
+  return []
+}
+
+/**
+ * get number of submission from group id
+ *
+ * @param {string} groupId
+ * @param {string} submissionName - default to Paper
+ * @returns number
+ */
+export function getNumberFromGroup(groupId, submissionName = 'Paper') {
+  const paper = groupId.split('/').find((p) => p.indexOf(submissionName) === 0)
+  return paper ? Number.parseInt(paper.substring(submissionName.length), 10) : null
+}
+
+/**
+ * get anon id of submission from group id
+ *
+ * @param {string} groupId
+ * @param {string} submissionName - default to Paper
+ * @returns string
+ */
+export function getIndentifierFromGroup(groupId, submissionName = 'Paper') {
+  const paper = groupId.split('/').find((p) => p.indexOf(submissionName) === 0)
+  return paper ? paper.substring(submissionName.length) : null
+}
+
+/**
+ * get preferred name or name from profile object
+ *
+ * @param {object} profile
+ * @returns string
+ */
+export function getProfileName(profile) {
+  const name = profile.content.names.find((t) => t.preferred) || profile.content.names[0]
+  return name ? name.fullname : prettyId(profile.id)
+}
+
+/**
+ * get tab count message for moderation page
+ *
+ * @param {integer} unrepliedCommentCount
+ * @param {integer} notDeployedCount
+ * @returns string
+ */
+export function getVenueTabCountMessage(unrepliedCommentCount, notDeployedCount) {
+  if (unrepliedCommentCount === 0 && notDeployedCount === 0) return null
+  if (unrepliedCommentCount === 0 && notDeployedCount !== 0)
+    return inflect(notDeployedCount, 'venue request', 'venue requests', true)
+  if (unrepliedCommentCount !== 0 && notDeployedCount === 0) return unrepliedCommentCount
+  return `${inflect(
+    unrepliedCommentCount,
+    'venue with comments',
+    'venues with comments',
+    true
+  )}, ${inflect(notDeployedCount, 'venue request', 'venue requests', true)}`
+}
+
+export function parseNumberField(value) {
+  if (typeof value === 'string') {
+    const valueString = value.substring(0, value.indexOf(':'))
+    return valueString ? parseInt(valueString, 10) : parseInt(value, 10)
+  } else if (typeof value === 'number') {
+    return value
+  }
+  return null
+}
+
+/**
+ * convert query object with dot notation assignment statement to object that note editor can consume
+ *
+ * @param {Object} prefilledValues - e.g. {edit.note.comment:test comment}
+ * @returns object
+ */
+export function stringToObject(prefilledValues) {
+  if (Object.keys(prefilledValues).length === 0) {
+    return undefined
+  }
+
+  const outputObject = {}
+
+  Object.keys(prefilledValues).forEach((key) => {
+    const tokens = key.split('.')
+    if (tokens.some((p) => ['__proto__', 'prototype', 'constructor'].includes(p))) return
+
+    let currentLevel = outputObject
+
+    for (let i = 2; i < tokens.length; i += 1) {
+      const token = tokens[i]
+      if (!currentLevel[token]) {
+        if (i === tokens.length - 1) {
+          const prefilledValue = Array.isArray(prefilledValues[key])
+            ? uniq(prefilledValues[key])
+            : prefilledValues[key]
+          currentLevel[token] = { value: prefilledValue }
+        } else {
+          currentLevel[token] = {}
+        }
+      }
+      currentLevel = currentLevel[token]
+    }
+  })
+  return outputObject
+}
+
+/**
+ * checks whether email has instituion domain or subdomain
+ * e.g. email: test@umass.edu and test@test.umass.edu should return true
+ * while test@testumass.edu or test@umass.com should return false
+ *
+ * @param {string} email - the email address to check
+ * @param {Array} institutionDomains - the list of institution domains
+ * @returns boolean
+ */
+export function isInstitutionEmail(email, institutionDomains) {
+  const emailDomainTokens = email.split('@').pop()?.trim()?.toLowerCase().split('.')
+  return institutionDomains?.some((institutionDomain) => {
+    const institutionDomainTokens = institutionDomain.split('.')
+    if (institutionDomainTokens.length > emailDomainTokens.length) {
+      return false
+    }
+    for (let i = 0; i <= emailDomainTokens.length; i += 1) {
+      if (isEqual(emailDomainTokens.slice(i), institutionDomainTokens)) {
+        return true
+      }
+    }
+    return false
+  })
+}
+
+/**
+ * get the path of workflow invitaiton field by looking up sub invitation
+ * content field name in sub invitation's edit.invitation
+ *
+ * @param {object} editInvitationObject - subInvitation.edit.invitation
+ * @param {string} contentFieldName - the sub invitation content field name to look up for
+ * @param {string} intermediatePath - intermediate path value
+ * @returns string
+ */
+export function getPath(editInvitationObject, contentFieldName, intermediatePath) {
+  if (typeof editInvitationObject !== 'object') {
+    return null
+  }
+  const keys = Object.keys(editInvitationObject)
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i]
+    if (
+      typeof editInvitationObject[key] === 'string' &&
+      editInvitationObject[key].split('/').some((token) => token === contentFieldName)
+    ) {
+      if (Number.isNaN(Number(key)))
+        return intermediatePath ? `${intermediatePath}.${key}` : key
+      return intermediatePath
+    }
+    if (
+      Array.isArray(editInvitationObject[key]) &&
+      editInvitationObject[key].includes(contentFieldName)
+    ) {
+      return intermediatePath ? `${intermediatePath}.${key}` : key
+    }
+    if (typeof editInvitationObject[key] === 'object') {
+      const result = getPath(
+        editInvitationObject[key],
+        contentFieldName,
+        intermediatePath ? `${intermediatePath}.${key}` : key
+      )
+      if (result) {
+        return result
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * get the existing value to display for sub invitation content fields
+ * from workflow invitation based on path and content field type
+ *
+ * @param {object} workflowInvitationObject - the workflow invitation to get value from
+ * @param {string} path - the path to find the value in workflow invitation (from getPath function)
+ * @param {string} type - the data type specified in sub invitation content field
+ * @returns string | JSX.Element
+ */
+export function getSubInvitationContentFieldDisplayValue(
+  workflowInvitationObject,
+  path,
+  type,
+  timeZone
+) {
+  if (!path) return null
+  const fieldValue = get(workflowInvitationObject, path)
+  if (typeof fieldValue === 'object') {
+    if (Array.isArray(fieldValue)) {
+      if (typeof fieldValue[0] === 'object') {
+        // enum
+        return (
+          <ul>
+            {fieldValue.slice(0, 3).map((p, index) => (
+              <li key={index}>
+                {p.description ??
+                  prettyId(p.value?.replace(workflowInvitationObject.domain, ''))}
+              </li>
+            ))}
+            {fieldValue.length > 3 && (
+              <Collapse showLabel="Show all" hideLabel="Show less" linkAtBottom>
+                {fieldValue.slice(3).map((p, index) => (
+                  <li key={index}>
+                    {p.description ??
+                      prettyId(p.value?.replace(workflowInvitationObject.domain, ''))}
+                  </li>
+                ))}
+              </Collapse>
+            )}
+          </ul>
+        )
+      }
+
+      const valueSegments = fieldValue.map((value) =>
+        value === workflowInvitationObject.domain
+          ? ['Administrators']
+          : prettyId(value.replace(workflowInvitationObject.domain, '')).split(
+              /\{(\S+\s*\S*)\}/g
+            )
+      )
+
+      return (
+        <ul>
+          {valueSegments.slice(0, 3).map((segments, segmentsIndex) => (
+            <li key={segmentsIndex}>
+              {segments.map((segment, index) =>
+                index % 2 !== 0 ? <em key={index}>{segment}</em> : segment
+              )}
+            </li>
+          ))}
+          {valueSegments.length > 3 && (
+            <Collapse showLabel="Show all" hideLabel="Show less" linkAtBottom>
+              {valueSegments.slice(3).map((segments, segmentsIndex) => (
+                <li key={segmentsIndex}>
+                  {segments.map((segment, index) =>
+                    index % 2 !== 0 ? <em key={index}>{segment}</em> : segment
+                  )}
+                </li>
+              ))}
+            </Collapse>
+          )}
+        </ul>
+      )
+    }
+    const fieldKeys = Object.keys(fieldValue)
+    return (
+      <ul>
+        {fieldKeys.slice(0, 3).map((p, index) => (
+          <li key={index}>{p}</li>
+        ))}
+        {fieldKeys.length > 3 && (
+          <Collapse showLabel="Show all" hideLabel="Show less" linkAtBottom>
+            {fieldKeys.slice(3).map((p, index) => (
+              <li key={index}>{p}</li>
+            ))}
+          </Collapse>
+        )}
+      </ul>
+    )
+  }
+  if (type === 'script') {
+    return 'script'
+  }
+  if (type === 'date') {
+    return fieldValue !== undefined && fieldValue !== null
+      ? formatDateTime(fieldValue, {
+          second: undefined,
+          timeZone,
+          hour12: false,
+          timeZoneName: 'short',
+        })
+      : 'value missing'
+  }
+  return fieldValue !== undefined && fieldValue !== null
+    ? fieldValue.toString()
+    : 'value missing'
+}
+
+/**
+ * return profile rejection options
+ *
+ * @param {string} currentInstitutionName
+ * @returns Array
+ */
+export function getRejectionReasons(currentInstitutionName) {
+  const rejectionReasons = [
+    {
+      value: 'requestEmailVerification',
+      label: 'Institutional Email is missing',
+      rejectionText: `Please add and confirm an institutional email ${
+        currentInstitutionName ? `issued by ${currentInstitutionName} ` : ''
+      }to your profile. Please make sure the verification token is entered and verified.\n\nIf your affiliation ${
+        currentInstitutionName ? `issued by ${currentInstitutionName} ` : ''
+      }is not current, please update your profile with your current affiliation and associated institutional email.\n\nIf your institution does not provide you with an email, please use our contact form at https://openreview.net/contact, and make sure your profile is filled out completely: https://docs.openreview.net/getting-started/creating-an-openreview-profile/expediting-profile-activation`,
+    },
+    {
+      value: 'requestEmailConfirmation',
+      label: 'Institutional Email is added but not confirmed',
+      rejectionText:
+        'Please confirm the institutional email in your profile by clicking the "Confirm" button next to the email and enter the verification token received.',
+    },
+    {
+      value: 'invalidDBLP',
+      label: 'DBLP link is a disambiguation page',
+      rejectionText:
+        'The DBLP link you have provided is a disambiguation page and is not intended to be used as a bibliography. Please select the correct bibliography page listed under "Other persons with a similar name". If your page is not listed please contact the DBLP team so they can add your bibliography page. We recommend providing a different bibliography homepage when resubmitting to OpenReview moderation.',
+    },
+    {
+      value: 'imPersonalHomepage',
+      label: 'Homepage is invalid',
+      rejectionText:
+        "The homepage url provided in your profile is invalid or does not display your name/email used to register so your identity can't be determined.",
+    },
+    {
+      value: 'invalidName',
+      label: 'Profile name is invalid',
+      rejectionText:
+        'The name in your profile does not match the name listed in your homepage or is invalid.',
+    },
+    {
+      value: 'invalidORCID',
+      label: 'ORCID profile is incomplete',
+      rejectionText:
+        "The ORCID profile you've provided as a homepage is empty or does not match the Career & Education history you've provided.",
+    },
+    {
+      value: 'requestVouch',
+      label: 'Request supervisor or coauthor to vouch',
+      rejectionText:
+        'Please ask a supervisor, coauthor, or colleague who already has an active OpenReview profile with a confirmed institutional email to vouch for you.\n\nThey should add your profile ID to the Relations section of their profile, save their profile, and then click the vouch button next to your name.\n\nYour profile will be activated automatically once they vouch.\n\nIf no such person is available, please use our contact form at https://openreview.net/contact, and make sure your profile is filled out completely: https://docs.openreview.net/getting-started/creating-an-openreview-profile/expediting-profile-activation',
+    },
+    {
+      value: 'organizationProfile',
+      label: 'Profiles cannot represent an organization',
+      rejectionText:
+        'Profiles can only represent an individual, we do not allow profiles to be created for an organization.',
+    },
+    {
+      value: 'incompleteHistory',
+      label: 'Education/career history is incomplete',
+      rejectionText:
+        'Please complete your full education and career history in your profile, not just your current position.\n\nA complete history helps us verify your identity and is required for profile activation. If you are currently an independent researcher, please find more information here:\nhttps://docs.openreview.net/getting-started/frequently-asked-questions/i-am-an-independent-researcher-how-do-i-sign-up',
+    },
+    {
+      value: 'documentVerification',
+      label: 'Documentation / ID requests',
+      rejectionText:
+        "To proceed with activation and verify your affiliation, please provide a document from each of the following categories:\n\nA photo ID (government ID, passport, or driver's license) to verify your identity.\n\nA certificate or official document proving your affiliation with the institution listed in your profile (e.g. enrollment letter, employee ID, or student ID).\n\nWe handle all documents in accordance with our privacy policy and delete them after verification is complete.\n\nPlease upload the requested documents using the following link:\n\n{{documentVerificationLink}}\n\nOnce you have uploaded all of the requested documents, use the activation link in this email to update and resubmit your profile.",
+    },
+    {
+      value: 'underageConsentForm',
+      label: 'Consent form required for underage researchers',
+      rejectionText:
+        'OpenReview welcomes younger researchers, aged 13 and above, to participate in scholarly peer review.\n\nIf you are at least 13 and under 18 years of age, you must submit a consent form to activate your profile. More information can be found here: https://docs.openreview.net/getting-started/creating-an-openreview-profile/information-for-high-school-students\n\nPlease upload the completed consent form using the following link. Do not email the form directly to OpenReview.\n\n{{underageConsentLink}}\n\nOnce you have uploaded the consent form, use the activation link in this email to update and resubmit your profile.',
+    },
+  ]
+  return rejectionReasons
+}
+
+export function formatGroupResults(apiRes) {
+  return (apiRes.groups?.[0]?.members || []).map((groupId) => ({ groupId, dueDate: null }))
+}
+
+export function getTagDispayText(tag, showProfileId = true) {
+  const { signature, invitation, label, weight, profile } = tag
+  const invitationGroup = invitation.split('/-')[0]
+  const signatureGroupEqInvitationGroup = invitationGroup.includes(signature)
+
+  if (invitation === `${process.env.SUPER_USER}/Support/-/Vouch`) {
+    return showProfileId ? (
+      `${signature} vouch ${profile}`
+    ) : (
+      <span>
+        Vouched by <span className="highlight">{prettyId(signature)}</span>
+      </span>
+    )
+  }
+  if (invitation.startsWith(`${process.env.SUPER_USER}/Support`)) {
+    return `${prettyId(signature)}${signatureGroupEqInvitationGroup ? ' ' : ` ${prettyId(invitationGroup)}`}${prettyInvitationId(tag.invitation)}${showProfileId ? ` ${prettyId(profile)}` : ''}${label ? ` ${label}` : ''}${weight ? ` (${weight})` : ''}`
+  } else {
+    return (
+      <span>
+        <span className="highlight">{prettyId(signature)}</span>
+        {signatureGroupEqInvitationGroup ? ' ' : ` ${prettyId(invitationGroup)}`}
+        {prettyInvitationId(tag.invitation)}
+        {showProfileId ? ` ${prettyId(profile)}` : ''}
+        {label ? ` ${label}` : ''}
+        {weight ? ` (${weight})` : ''}
+      </span>
+    )
+  }
+}
+
+/**
+ * return authorids from a note, handling v1 note, v2 note array and object format
+ *
+ * @param {object} note - the note to get authorids from
+ * @param {boolean} isV2Note - whether the note is a v2 note
+ * @returns Array
+ */
+export function getNoteAuthorIds(note, isV2Note) {
+  if (!isV2Note) return note.content.authorids
+  if (!note?.content?.authorids?.value) {
+    // object author
+    const value = note?.content?.authors?.value
+    return Array.isArray(value) ? value.map((p) => p.username) : undefined
+  }
+  const value = note?.content?.authorids?.value
+  return Array.isArray(value) ? value : undefined
+}
+
+/**
+ * return author names from a note, handling v1 note, v2 note array and object format
+ *
+ * @param {object} note - the note to get author names from
+ * @param {boolean} isV2Note - whether the note is a v2 note
+ * @returns Array
+ */
+export function getNoteAuthors(note, isV2Note) {
+  if (isV2Note) {
+    if (note.content?.authorids?.value) return note.content?.authors?.value
+    const value = note.content?.authors?.value
+    return Array.isArray(value) ? value.map((p) => p.fullname) : undefined
+  }
+  const noteAuthors = note.content?.authors
+  const originalAuthors = note.details?.original?.content?.authors
+  if (originalAuthors && !isEqual(noteAuthors, originalAuthors)) return originalAuthors
+  return noteAuthors
+}
+
+const allowedRedirectPaths = new Set([
+  '/activity',
+  '/assignments',
+  '/assignments/stats',
+  '/edge/browse',
+  '/forum',
+  '/group',
+  '/group/edit',
+  '/group/info',
+  '/group/revisions',
+  '/invitation',
+  '/invitation/edit',
+  '/invitation/info',
+  '/invitation/revisions',
+  '/messages',
+  '/notifications',
+  '/profile',
+  '/profile/edit',
+  '/profile/password-security',
+  '/revisions/compare',
+  '/tasks',
+  '/oidc/authorize',
+])
+
+export function sanitizeRedirectUrl(redirectUrl) {
+  try {
+    const url = new URL(redirectUrl, window.location.origin)
+    if (url.origin !== window.location.origin) return '/'
+    if (allowedRedirectPaths.has(url.pathname))
+      return `${url.pathname}${url.search}${url.hash}`
+    return '/'
+  } catch (_) {
+    return '/'
+  }
+}
+
+export function base64ToArrayBuffer(base64) {
+  const standardBase64 = base64.replace(/-/g, '+').replace(/_/g, '/')
+  const paddedBase64 = standardBase64.padEnd(
+    standardBase64.length + ((4 - (standardBase64.length % 4)) % 4),
+    '='
+  )
+
+  const binaryString = window.atob(paddedBase64)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i += 1) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  return bytes.buffer
+}
+
+export function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
+
+export const allowedHtmlTags = [
+  // headings and block structure
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'p',
+  'div',
+  'span',
+  'blockquote',
+  'pre',
+  'hr',
+  'section',
+  'article',
+  'header',
+  'footer',
+  'figure',
+  'figcaption',
+  'details',
+  'summary',
+  // inline text
+  'a',
+  'b',
+  'i',
+  'em',
+  'strong',
+  'u',
+  's',
+  'strike',
+  'del',
+  'ins',
+  'sub',
+  'sup',
+  'small',
+  'mark',
+  'code',
+  'kbd',
+  'samp',
+  'var',
+  'abbr',
+  'cite',
+  'q',
+  'br',
+  'wbr',
+  // lists
+  'ul',
+  'ol',
+  'li',
+  'dl',
+  'dt',
+  'dd',
+  // tables
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'th',
+  'td',
+  'caption',
+  'colgroup',
+  'col',
+  // images
+  'img',
+]

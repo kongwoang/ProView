@@ -1,0 +1,78 @@
+@use '../../styles/utils/constants';
+@use 'sass:color';
+
+.profileContainer {
+  width: calc(100% + 100px);
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+}
+
+.publicationsSection {
+  @media (max-width: constants.$sm-max) {
+    margin-top: 1.5rem;
+  }
+
+  @media (min-width: 992px) {
+    border-left: 1px solid constants.$borderGray;
+    padding-left: 15px;
+  }
+}
+
+.publicationsList {
+  margin-bottom: 0.5rem;
+
+  :global(.note) {
+    padding: 0.25rem 0;
+
+    h4 {
+      font-size: 0.875rem;
+      line-height: 1.125rem;
+      padding-bottom: 0.125rem;
+      border-bottom: 0;
+      margin-bottom: 0;
+    }
+  }
+
+  :global(.note-authors) {
+    line-height: 1.125rem;
+
+    :global(.tooltip-inner) {
+      max-width: unset;
+      width: max-content;
+    }
+  }
+
+  :global(.submissions-list .note-authors .private-contents-icon) {
+    color: constants.$subtleGray;
+    font-size: 0.75rem;
+    line-height: normal;
+    margin-left: 0.25rem;
+    margin-right: 0.25rem;
+    padding-left: 0;
+  }
+
+  :global(.note-meta-info .readers) {
+    display: none;
+  }
+
+  :global(.note-private) > h4 > a {
+    color: color.mix(constants.$mediumBlue, gray, 35%);
+  }
+
+  :global(.note-visible-icon) {
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: constants.$subtleGray;
+    margin-left: 0.25rem;
+  }
+}
+
+.pronouns {
+  font-weight: normal;
+  color: constants.$subtleGray;
+  line-height: normal;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}

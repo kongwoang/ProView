@@ -1,0 +1,36 @@
+<div class="reviewer-progress">
+  <h4>{{numCompletedMetaReviews}} of {{numPapers}} Papers {{#if metaReviewName}}{{metaReviewName}}{{else}}Meta Review{{/if}}s Completed</h4>
+
+  <strong>Papers:</strong>
+  <table class="table table-condensed table-minimal">
+    <tbody>
+      {{#each papers}}
+        {{#if metaReview}}
+        <tr>
+          <td style="width: 28px;"><strong>{{note.number}}.</strong></td>
+          <td style="width: 214px;">
+            {{note.content.venue}} - {{metaReview.content.recommendation}}
+            {{#if metaReview.content.format}}/ Format: {{metaReview.content.format}}{{/if}}
+          </td>
+        </tr>
+        <tr>
+          <td style="width: 28px;"></td>
+          <td style="width: 214px;">
+            <a href="/forum?id={{metaReview.forum}}&noteId={{metaReview.id}}{{#if ../referrer}}&referrer={{../referrer}}{{/if}}" target="_blank">Read {{#if ../metaReviewName}}{{../metaReviewName}}{{else}}Meta Review{{/if}}</a>
+          </td>
+        </tr>
+        {{else}}
+        <tr>
+          <td style="width: 28px;"><strong>{{note.number}}.</strong></td>
+          <td style="width: 214px;">{{note.content.venue}} - No {{#if ../metaReviewName}}{{../metaReviewName}}{{else}}Meta Review{{/if}}</td>
+        </tr>
+        <tr>
+          <td style="width: 28px;"></td>
+          <td></td>
+        </tr>
+        {{/if}}
+      {{/each}}
+    </tbody>
+  </table>
+
+</div>

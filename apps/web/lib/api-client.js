@@ -1,0 +1,482 @@
+import chunk from 'lodash/chunk'
+import { stringify } from 'query-string'
+import { shouldTryRefreshToken } from './clientAuth'
+import { getHumanVerificationToken } from './human-verification-service'
+
+const formatError = (err) => {
+  if (process.env.SERVER_ENV !== 'production') {
+    // oxlint-disable-next-line no-console
+    console.warn(err)
+  }
+
+  let networkErr
+  if (err instanceof TypeError) {
+    networkErr = new Error(
+      'The OpenReview API is currently unavailable, please wait and try again later'
+    )
+    networkErr.name = 'UnavailableError'
+    networkErr.status = 500
+    networkErr.details = {}
+  }
+
+  return Promise.reject(networkErr ?? err)
+}
+
+const checkStatus = async (response, originalRequest) => {
+  if (response.ok) {
+    return response
+  }
+
+  const errorBody = await response.json()
+  if (errorBody.status === 401 && originalRequest && shouldTryRefreshToken()) {
+    // client refresh token
+    const refreshResponse = await fetchFn(`${process.env.API_V2_URL}/refreshToken`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json,text/*;q=0.99',
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Url': originalRequest.url,
+        'X-Source': 'api client',
+      },
+    })
+    const data = await refreshResponse.json()
+    if (!data.user) {
+      throw new Error('Token has expired, please log out and log in again.')
+    }
+
+    return fetchFn(originalRequest.url, originalRequest.options).then((reExecuteResponse) =>
+      checkStatus(reExecuteResponse)
+    )
+  }
+
+  const error = new Error(errorBody.message)
+  error.name = errorBody.name
+  error.status = errorBody.status
+  error.details = errorBody.details
+  error.errors = errorBody.errors
+
+  // On a challenge requirement, send the client to the frontend-served challenge
+  // page (SSR handles this via redirect() instead).
+  if (
+    error.status === 403 &&
+    error.name === 'ChallengeRequiredError' &&
+    typeof window !== 'undefined'
+  ) {
+    const redirectPath = window.location.pathname + window.location.search
+    window.location = `/challenge?redirect=${encodeURIComponent(redirectPath)}`
+    // Never-resolving promise: halt the chain while the navigation happens.
+    return new Promise(() => {})
+  } else if (
+    error.status === 403 &&
+    error.name === 'HumanVerificationRequiredError' &&
+    originalRequest &&
+    typeof window !== 'undefined'
+  ) {
+    const humanVerificationTurnstileToken = await getHumanVerificationToken()
+    if (humanVerificationTurnstileToken) {
+      return fetchFn(originalRequest.url, {
+        ...originalRequest.options,
+        headers: {
+          ...originalRequest.options.headers,
+          'cf-turnstile-token': humanVerificationTurnstileToken,
+        },
+      }).then((reExecuteResponse) => checkStatus(reExecuteResponse))
+    }
+  }
+
+  return Promise.reject(error)
+}
+
+const buildQueryString = (data) => {
+  const encoded = stringify(data, { skipNull: true })
+  return encoded ? `?${encoded}` : ''
+}
+
+let fetchFn = typeof fetch === 'undefined' ? () => {} : fetch
+const configure = (options) => {
+  if (typeof options.fetchFn === 'function') {
+    // oxlint-disable-next-line prefer-destructuring
+    fetchFn = options.fetchFn
+  }
+}
+
+const request = (httpMethod) => {
+  const defaultOptions = {
+    method: httpMethod,
+    mode: 'cors',
+    credentials: 'include',
+  }
+
+  return (path, data = {}, options = {}) => {
+    if (!path) {
+      const noPathError = new Error('Missing required parameter path')
+      noPathError.status = 400
+      noPathError.name = 'BadRequestError'
+      noPathError.details = {}
+      return Promise.reject(noPathError)
+    }
+    const requestPath = path.startsWith('/') ? path : `/${path}`
+
+    const baseUrl =
+      (options.version === 1 ? process.env.API_URL : process.env.API_V2_URL) ||
+      'http://localhost:3001'
+
+    const defaultHeaders = {
+      Accept: 'application/json,text/*;q=0.99',
+    }
+    if (options.accessToken) {
+      defaultHeaders.Authorization = `Bearer ${options.accessToken}`
+    }
+
+    if (options.guestToken) {
+      defaultHeaders['X-Guest-Token'] = options.guestToken
+    }
+
+    if (options.remoteIpAddress) {
+      defaultHeaders['X-Forwarded-For'] = options.remoteIpAddress
+    }
+
+    if (options['cf-turnstile-token']) {
+      defaultHeaders['cf-turnstile-token'] = options['cf-turnstile-token']
+    }
+
+    // Forward the guest clearance cookie on SSR calls; client-side requests carry it automatically.
+    if (options.clearanceToken) {
+      const clearanceCookieName =
+        process.env.CLEARANCE_COOKIE_NAME || 'openreview.clearanceToken'
+      defaultHeaders.Cookie = `${clearanceCookieName}=${options.clearanceToken}`
+    }
+
+    if (options.headers) {
+      Object.assign(defaultHeaders, options.headers)
+    }
+
+    let query
+    let methodOptions
+    if (httpMethod === 'GET') {
+      query = buildQueryString(data)
+      methodOptions = {
+        headers: defaultHeaders,
+      }
+      if (options.cache === false) {
+        methodOptions.cache = 'no-cache'
+      }
+    } else {
+      query = ''
+      methodOptions = {
+        headers: {
+          ...defaultHeaders,
+          ...(options.contentType !== 'unset' && {
+            'Content-Type': 'application/json; charset=UTF-8',
+          }),
+        },
+        body: options.contentType !== 'unset' ? JSON.stringify(data) : data,
+      }
+    }
+
+    if (options.contentType === 'blob') {
+      return fetchFn(baseUrl + requestPath + query, {
+        ...defaultOptions,
+        ...methodOptions,
+      })
+        .then(checkStatus)
+        .then((r) => r.blob())
+    }
+
+    const fullOptions = {
+      ...defaultOptions,
+      ...methodOptions,
+    }
+    return fetchFn(baseUrl + requestPath + query, fullOptions)
+      .then((response) =>
+        checkStatus(response, {
+          url: baseUrl + requestPath + query,
+          options: fullOptions,
+        })
+      )
+      .then((r) => r.json())
+      .catch((err) => {
+        if (
+          typeof window !== 'undefined' &&
+          !options.ignoreErrors?.includes(err.name) &&
+          (process.env.SERVER_ENV === 'production' || process.env.SERVER_ENV === 'staging')
+        ) {
+          window.gtag('event', 'exception', {
+            description: `API Error: ${httpMethod} ${requestPath + query} returned "${
+              err.message
+            }" ${JSON.stringify(err)}`,
+            fatal: false,
+          })
+        }
+        return formatError(err)
+      })
+  }
+}
+const get = request('GET')
+const post = request('POST')
+const put = request('PUT')
+const patch = request('PATCH')
+const del = request('DELETE')
+
+const getById = async (
+  apiPath,
+  id,
+  accessToken,
+  apiVersion,
+  queryParam,
+  remoteIp,
+  clearanceToken
+) => {
+  try {
+    const apiRes = await get(
+      `/${apiPath}`,
+      { id, ...queryParam },
+      { accessToken, version: apiVersion, remoteIpAddress: remoteIp, clearanceToken }
+    )
+    return apiRes[apiPath]?.length > 0 ? { ...apiRes[apiPath][0], apiVersion } : null
+  } catch (apiError) {
+    if (apiError.name === 'NotFoundError') {
+      return null
+    }
+    throw apiError
+  }
+}
+
+const getInvitationById = async (
+  invitationId,
+  accessToken,
+  queryParam1,
+  queryParam2,
+  remoteIp
+) => {
+  const invitationObj = await getById(
+    'invitations',
+    invitationId,
+    accessToken,
+    2,
+    queryParam1,
+    remoteIp
+  )
+  if (invitationObj) {
+    return invitationObj
+  }
+
+  return getById(
+    'invitations',
+    invitationId,
+    accessToken,
+    1,
+    queryParam2 ?? queryParam1,
+    remoteIp
+  )
+}
+
+const getNoteById = async (
+  noteId,
+  accessToken,
+  queryParam1,
+  queryParam2,
+  remoteIp,
+  clearanceToken
+) => {
+  const noteObj = await getById(
+    'notes',
+    noteId,
+    accessToken,
+    2,
+    queryParam1,
+    remoteIp,
+    clearanceToken
+  )
+  if (noteObj) {
+    return noteObj
+  }
+
+  return getById(
+    'notes',
+    noteId,
+    accessToken,
+    1,
+    queryParam2 ?? queryParam1,
+    remoteIp,
+    clearanceToken
+  )
+}
+
+const getGroupById = (groupId, accessToken, queryParam) =>
+  getById('groups', groupId, accessToken, 2, queryParam)
+
+const getCombined = async (path, data1 = {}, data2 = null, options = {}) => {
+  const [apiRes1, apiRes2] = await Promise.allSettled([
+    get(path, data1, { ...options, version: 1 }),
+    get(path, data2 ?? data1, options).catch((error) => error),
+  ])
+  const resultsKey = options.resultsKey || path.substring(1)
+  let results1
+  let results2
+  if (options.includeVersion) {
+    results1 = apiRes1.value?.[resultsKey]?.map((p) => ({ ...p, apiVersion: 1 })) ?? []
+    results2 = apiRes2.value?.[resultsKey]?.map((p) => ({ ...p, apiVersion: 2 })) ?? []
+  } else {
+    results1 = apiRes1.value?.[resultsKey] ?? []
+    results2 = apiRes2.value?.[resultsKey] ?? []
+  }
+
+  const sortOptions = {
+    'cdate:asc': (a, b) => a.cdate - b.cdate,
+    'cdate:desc': (a, b) => b.cdate - a.cdate,
+    'mdate:asc': (a, b) => a.mdate - b.mdate,
+    'mdate:desc': (a, b) => b.mdate - a.mdate,
+    'tmdate:asc': (a, b) => a.tmdate - b.tmdate,
+    'tmdate:desc': (a, b) => b.tmdate - a.tmdate,
+    none: () => 0,
+  }
+  const sortFn = sortOptions[options.sort ?? (data1.sort || '')] ?? sortOptions['cdate:asc']
+
+  return {
+    [resultsKey]: results2.concat(results1).sort(sortFn),
+    count: (apiRes1.value?.count ?? 0) + (apiRes2.value?.count ?? 0),
+  }
+}
+
+const getAll = async (path, queryParam, options = {}) => {
+  const queryObj = {
+    ...queryParam,
+    limit: Math.min(queryParam.limit ?? 1000, 1000),
+    ...(options.version !== 1 && { count: true }),
+  }
+  const offset = queryParam.offset ?? 0
+  let { resultsKey } = options
+  if (!resultsKey) {
+    if (path.indexOf('notes') !== -1) {
+      resultsKey = 'notes'
+    } else if (path.indexOf('groups') !== -1) {
+      resultsKey = 'groups'
+    } else if (path.indexOf('profiles') !== -1) {
+      resultsKey = 'profiles'
+    } else if (path.indexOf('invitations') !== -1) {
+      resultsKey = 'invitations'
+    } else if (path.indexOf('tags') !== -1) {
+      resultsKey = 'tags'
+    } else if (path.indexOf('edges') !== -1) {
+      resultsKey = 'edges'
+    } else {
+      return Promise.reject(new Error('Unknown API endpoint'))
+    }
+  }
+
+  const results = await get(path, queryObj, {
+    accessToken: options.accessToken,
+    version: options.version,
+  })
+  if (!results || !results[resultsKey]) return []
+
+  const initialResults = results[resultsKey]
+  const totalCount = results.count ?? initialResults.length
+  if (!totalCount) return []
+  if (totalCount - initialResults.length <= 0) return initialResults
+
+  const offsetList = [...Array(totalCount - offset - queryObj.limit).keys()]
+    .map((p) => p + offset + queryObj.limit)
+    .filter((q) => (q - offset - queryObj.limit) % queryObj.limit === 0)
+  const remainingRequests = offsetList.map((p) =>
+    get(
+      path,
+      { ...queryObj, offset: p, ...(options.version !== 1 && { count: false }) },
+      { accessToken: options.accessToken, version: options.version }
+    )
+  )
+  const remainingResults = await Promise.all(remainingRequests)
+  const rest = remainingResults
+    .filter((p) => p?.[resultsKey]?.length)
+    .flatMap((q) => q[resultsKey])
+  return [...initialResults, ...rest]
+}
+
+const getAllWithAfter = async (path, queryParam, options = {}) => {
+  const queryObj = {
+    ...queryParam,
+    ...(queryParam.sort === undefined && { sort: 'id' }),
+    limit: 1000,
+    count: true,
+  }
+  let { resultsKey } = options
+  if (!resultsKey) {
+    if (path.indexOf('notes') !== -1) {
+      resultsKey = 'notes'
+    } else if (path.indexOf('groups') !== -1) {
+      resultsKey = 'groups'
+    } else if (path.indexOf('profiles') !== -1) {
+      resultsKey = 'profiles'
+    } else if (path.indexOf('invitations') !== -1) {
+      resultsKey = 'invitations'
+    } else if (path.indexOf('tags') !== -1) {
+      resultsKey = 'tags'
+    } else if (path.indexOf('edges') !== -1) {
+      resultsKey = 'edges'
+    } else {
+      return Promise.reject(new Error('Unknown API endpoint'))
+    }
+  }
+
+  const initialResult = await get(path, queryObj, {
+    accessToken: options.accessToken,
+  })
+  if (!initialResult || !initialResult[resultsKey]) return []
+
+  const initialResults = initialResult[resultsKey]
+  const totalCount = initialResult.count ?? initialResults.length
+  if (!totalCount) return []
+  if (totalCount - initialResults.length <= 0) return initialResults
+
+  const allResults = []
+
+  const requestsCount = Math.ceil(totalCount / 1000)
+
+  const remainingRequests = [...Array(requestsCount).keys()].reduce(
+    (prev, _) =>
+      prev.then((result) => {
+        const resultObjects = result?.[resultsKey]
+        if (!resultObjects?.length) return []
+        allResults.push(...resultObjects)
+        options.statusUpdate?.(allResults.length, totalCount)
+        const afterId = resultObjects[resultObjects.length - 1].id
+        if (!afterId) return []
+        return get(
+          path,
+          { ...queryObj, after: afterId, count: false },
+          { accessToken: options.accessToken }
+        )
+      }),
+    Promise.resolve(initialResult)
+  )
+  await remainingRequests
+  return allResults
+}
+
+const getAllProfilesByIds = async (ids, options = {}) => {
+  if (!ids?.length) return { profiles: [] }
+  const chunks = chunk(ids, 1000)
+  const results = await Promise.all(
+    chunks.map((chunkIds) => post('/profiles/search', { ids: chunkIds }, options))
+  )
+  return { profiles: results.flatMap((r) => r?.profiles ?? []) }
+}
+
+const api = {
+  get,
+  post,
+  put,
+  patch,
+  delete: del,
+  getInvitationById,
+  getNoteById,
+  getGroupById,
+  getCombined,
+  getAll,
+  getAllWithAfter,
+  getAllProfilesByIds,
+  configure,
+}
+export default api

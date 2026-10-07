@@ -1,0 +1,116 @@
+@use '../../styles/utils/constants';
+
+.signup {
+  :global {
+    h1 {
+      margin-bottom: 1rem;
+    }
+    hr.spacer {
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .signup-form-container {
+      margin-top: 1.5rem;
+      margin-bottom: 2rem;
+
+      .row {
+        margin-left: -5px;
+        margin-right: -5px;
+      }
+      .form-group {
+        padding-left: 5px;
+        padding-right: 5px;
+
+        @media #{constants.$tablet} {
+          margin-bottom: 0;
+        }
+      }
+      .help-block {
+        font-size: 0.75rem;
+        margin-bottom: 0;
+      }
+      .form-inline {
+        margin-top: 0.5rem;
+        overflow: hidden;
+
+        input {
+          width: 320px;
+          max-width: 100%;
+          margin-right: 10px;
+        }
+        button {
+          width: 180px;
+          margin-right: 10px;
+        }
+        .password-row,
+        .claim-button-row {
+          padding-top: 0.5rem;
+          white-space: nowrap;
+        }
+
+        .activation-message-row {
+          margin-top: 0.25rem;
+          font-size: 0.75rem;
+          color: constants.$orRed;
+
+          .email-tooltip {
+            margin-right: 0.25rem;
+          }
+        }
+
+        @media #{constants.$phone-only} {
+          input {
+            display: block;
+            width: 100%;
+            max-width: 510px;
+            margin-bottom: 15px;
+            margin-right: 0;
+          }
+        }
+      }
+
+      .new-profile-title {
+        color: constants.$orRed;
+        font-size: 0.875rem;
+        font-weight: 700;
+      }
+    }
+
+    .confirm-message {
+      margin-bottom: 1.5rem;
+      span.email {
+        font-weight: bold;
+        color: constants.$mediumBlue;
+      }
+      strong {
+        color: constants.$orRed;
+      }
+    }
+
+    .merge-message {
+      margin-top: 1rem;
+    }
+
+    #confirm-name-modal {
+      label {
+        color: #333;
+      }
+    }
+  }
+}
+
+.fieldWidth {
+  max-width: 510px;
+}
+.titleText {
+  color: constants.$orRed;
+}
+.nameConfirmation {
+  cursor: pointer;
+  font-weight: normal;
+
+  &.disabled {
+    cursor: not-allowed;
+  }
+}

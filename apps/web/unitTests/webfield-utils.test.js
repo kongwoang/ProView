@@ -1,0 +1,916 @@
+import {
+  getErrorFieldName,
+  filterCollections,
+  isNonDeletableError,
+  convertToString,
+  convertToArray,
+  evaluateOperator,
+} from '../lib/webfield-utils'
+
+jest.mock('nanoid', () => ({ nanoid: () => 'some id' }))
+
+const filterOperators = ['!=', '>=', '<=', '>', '<', '==', '=']
+const uniqueIdentifier = 'id'
+
+describe('webfield-utils', () => {
+  test('return field name in getErrorFieldName', () => {
+    let errorPath = 'note/content/pdf'
+    let resultExpected = { fieldName: 'pdf' }
+
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'note/content/title/value'
+    resultExpected = { fieldName: 'title' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'note/content/authorids/value/0'
+    resultExpected = { fieldName: 'authorids' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'signatures' // edit signatures
+    resultExpected = { fieldName: 'editSignatureInputValues' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'note/signatures' // note signatures
+    resultExpected = { fieldName: 'noteSignatureInputValues' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'readers' // edit readers
+    resultExpected = { fieldName: 'editReaderValues' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'note/readers' // note readers
+    resultExpected = { fieldName: 'noteReaderValues' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'note/license' // note license
+    resultExpected = { fieldName: 'noteLicenseValue' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'content/author_id/value' // edit content
+    resultExpected = { fieldName: 'content.author_id' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'content/author_index/value/0'
+    resultExpected = { fieldName: 'content.author_index' }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+
+    errorPath = 'note/content/authors/value/4/institutions' // object authors
+    resultExpected = { fieldName: 'authors', index: 4 }
+    expect(getErrorFieldName(errorPath)).toEqual(resultExpected)
+  })
+
+  test('return whether the error invalidValue is {delete:true} in isNonDeletableError', () => {
+    let invalidValue = null
+    expect(isNonDeletableError(invalidValue)).toBe(false)
+
+    invalidValue = undefined
+    expect(isNonDeletableError(invalidValue)).toBe(false)
+
+    invalidValue = 5
+    expect(isNonDeletableError(invalidValue)).toBe(false)
+
+    invalidValue = 'some text'
+    expect(isNonDeletableError(invalidValue)).toBe(false)
+
+    invalidValue = {}
+    expect(isNonDeletableError(invalidValue)).toBe(false)
+
+    invalidValue = { delete: true }
+    expect(isNonDeletableError(invalidValue)).toBe(true)
+
+    invalidValue = { delete: true, someOtherKey: 'some other value' }
+    expect(isNonDeletableError(invalidValue)).toBe(false)
+  })
+})
+
+describe('evaluateOperator', () => {
+  test('return null when property value or target value is undefined or null', () => {
+    let propertyValue, targetValue, operator
+    operator = '='
+    propertyValue = undefined
+    targetValue = 'some value'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+
+    propertyValue = 'some value'
+    targetValue = null
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+
+    propertyValue = null
+    targetValue = undefined
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+  })
+
+  test('treat N/A property value as 0 when compared with number tagrget value', () => {
+    let propertyValue = 'N/A'
+    let targetValue = 5
+    let operator = '<'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+
+    operator = '>'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+
+    targetValue = -1
+    operator = '>'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+  })
+
+  test('user preferredName and preferredId as property value when searching profile', () => {
+    // convert all value to lowercase whne operator is not ==
+    let propertyValue = [
+      { preferredId: '~First_Last1', preferredName: 'First Last', type: 'profile' },
+    ]
+    let targetValue = 'last'
+    let operator = '='
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+
+    targetValue = 'LAST'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+
+    // exact match when operator is ==
+    operator = '=='
+    targetValue = 'last'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    targetValue = 'first Last'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    targetValue = 'First Last'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+  })
+
+  test('not to allow greater less comparison when both target and property', () => {
+    let propertyValue = 'some string and some other string'
+    let targetValue = 'some string'
+
+    const notAllowedOperators = ['>', '>=', '<', '<=']
+    notAllowedOperators.forEach((operator) => {
+      expect(() => evaluateOperator(operator, propertyValue, targetValue)).toThrow(
+        'operator is invalid'
+      )
+    })
+
+    let operator = '='
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+    operator = '=='
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    operator = '!='
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+  })
+
+  test('not to convert target value to string when target value is number', () => {
+    // comparison of '5.00' and 3 is handled by js type coercion so no need to perform type conversion
+    let propertyValue = '5.00'
+    let targetValue = 3
+    let operator = '='
+
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    operator = '>='
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+    operator = '<'
+    expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+  })
+
+  test('compare number', () => {
+    // 1.23=1.23
+    let propertyValue = 1.23
+    let targetValue = 1.23
+    let trueOperators = ['=', '==', '>=', '<=']
+    let falseOperators = ['!=', '>', '<']
+
+    falseOperators.forEach((operator) => {
+      expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    })
+    trueOperators.forEach((operator) => {
+      expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+    })
+
+    // 1.23<1.24
+    targetValue = 1.24
+    trueOperators = ['!=', '<', '<=']
+    falseOperators = ['=', '==', '>=', '>']
+    falseOperators.forEach((operator) => {
+      expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    })
+    trueOperators.forEach((operator) => {
+      expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+    })
+
+    // 1.23>1.22
+    targetValue = 1.22
+    trueOperators = ['!=', '>', '>=']
+    falseOperators = ['=', '==', '<', '<=']
+    falseOperators.forEach((operator) => {
+      expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(false)
+    })
+    trueOperators.forEach((operator) => {
+      expect(evaluateOperator(operator, propertyValue, targetValue)).toBe(true)
+    })
+  })
+})
+
+describe('filterCollections', () => {
+  test('return input collection when query is invalid', () => {
+    const collections = [{ id: 1 }, { id: 2 }, { id: 3 }]
+    let filterString = 'some invalid query that can not be parsed to a tree' // non-sense search query
+    const propertiesAllowed = {}
+
+    let result
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+
+    expect(result.filteredRows).toEqual(collections)
+    expect(result.queryIsInvalid).toEqual(true)
+
+    filterString = 'title=test' // property not in propertiesAllowed
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual(collections)
+    expect(result.queryIsInvalid).toEqual(true)
+  })
+
+  test('filter collection with simple query unnested property', () => {
+    const collections = [{ id: 1 }, { id: 2 }, { id: 3 }]
+    let filterString = 'id=2'
+    const propertiesAllowed = {
+      id: ['id'],
+    }
+    let result
+
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 2 }])
+
+    filterString = 'id==2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 2 }])
+
+    filterString = 'id!=2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 1 }, { id: 3 }])
+
+    filterString = 'id>2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 3 }])
+
+    filterString = 'id>=2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 2 }, { id: 3 }])
+
+    filterString = 'id<=2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 1 }, { id: 2 }])
+
+    filterString = 'id<2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 1 }])
+  })
+
+  test('filter collection with complex query unnested property', () => {
+    const collections = [
+      { id: 1 },
+      { id: 2 },
+      { id: 3 },
+      { id: 4 },
+      { id: 5 },
+      { id: 6 },
+      { id: 7 },
+      { id: 8 },
+      { id: 9 },
+      { id: 10 },
+    ]
+    const filterString =
+      '((id!=1 OR id!=2) AND (id>3 OR (id<=5 AND id!=4))) AND (id>=6 AND id<8) OR id=8'
+    const propertiesAllowed = {
+      id: ['id'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([{ id: 6 }, { id: 7 }, { id: 8 }])
+  })
+
+  test('filter collection with nested property', () => {
+    const collections = [
+      { id: 1, note: { content: { title: { value: 'some value' } } } },
+      { id: 2, note: { content: { title: { value: 'some different value' } } } },
+      { id: 3 }, // no such value
+    ]
+    const filterString = "key='some value'"
+    const propertiesAllowed = {
+      key: ['note.content.title.value'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows).toEqual([
+      {
+        id: 1,
+        note: { content: { title: { value: 'some value' } } },
+      },
+    ])
+  })
+
+  test('filter collection with multiple propertie fields', () => {
+    const collections = [
+      { id: 1, note: { content: { title: { value: 'some value' } } } },
+      {
+        id: 2,
+        note: { content: { title: { value: 'some different value' } } },
+        decision: 'some value',
+      },
+      { id: 3 }, // no such value
+    ]
+    const filterString = "key='some value'"
+    const propertiesAllowed = {
+      key: ['note.content.title.value', 'decision'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+  })
+
+  test('filter collection with between properties', () => {
+    // should default value to 0 when both property and value are single value
+    const collections = [
+      {
+        id: 1,
+        filterProperties: {
+          'TMLR/Action_Editors/-/Custom_Max_Papers': 7,
+          'TMLR/Action_Editors/-/Assignment': 3,
+        },
+      },
+      {
+        id: 2,
+        filterProperties: {
+          'TMLR/Action_Editors/-/Custom_Max_Papers': 5,
+          'TMLR/Action_Editors/-/Assignment': 6,
+        },
+      },
+      {
+        id: 3,
+        filterProperties: {
+          'TMLR/Action_Editors/-/Custom_Max_Papers': 1,
+        },
+      },
+    ]
+    let filterString =
+      'TMLR/Action_Editors/-/Assignment<TMLR/Action_Editors/-/Custom_Max_Papers'
+    const propertiesAllowed = {
+      'TMLR/Action_Editors/-/Custom_Max_Papers': [
+        'filterProperties.TMLR/Action_Editors/-/Custom_Max_Papers',
+      ],
+      'TMLR/Action_Editors/-/Assignment': [
+        'filterProperties.TMLR/Action_Editors/-/Assignment',
+      ],
+    }
+    let result
+
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 3])
+
+    filterString = 'TMLR/Action_Editors/-/Custom_Max_Papers>TMLR/Action_Editors/-/Assignment' // to verify both property and value get the default value
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 3])
+  })
+
+  test('filter collection with between properties (single property field multi value fields)', () => {
+    const collections = [
+      {
+        id: 1,
+        note: {
+          content: {
+            value1: 'some value',
+            value2: 'some different value',
+            value3: 'some different value',
+            value4: 5,
+            value5: 6,
+            value6: 4,
+          },
+        },
+      },
+      {
+        id: 2,
+        note: {
+          content: {
+            value1: 'some value',
+            value2: 'some value',
+            value3: 'some different value',
+            value4: 5,
+            value5: 4,
+            value6: 6,
+          },
+        },
+      },
+      {
+        id: 3,
+        note: {
+          content: {
+            value1: 'some value',
+            value2: 'some different value',
+            value3: 'some value',
+            value4: 5,
+            value5: 6,
+            value6: 6,
+          },
+        },
+      },
+    ]
+    let filterString = 'key1 = key2'
+    const propertiesAllowed = {
+      key1: ['note.content.value1'],
+      key2: ['note.content.value2', 'note.content.value3'],
+      key3: ['note.content.value4'],
+      key4: ['note.content.value5', 'note.content.value6'],
+    }
+    let result
+
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([2, 3])
+
+    filterString = 'key3>=key4'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+  })
+
+  test('filter collection with between properties (multi property and value fields)', () => {
+    const collections = [
+      {
+        id: 1,
+        note: {
+          content: {
+            value1: 'some value',
+            value2: 'some different value',
+            value3: 'some value',
+            value4: 'some other value',
+          },
+        },
+      },
+      {
+        id: 2,
+        note: {
+          content: {
+            value1: 'some value',
+            value2: 'some other value',
+            value3: 'some different value',
+            value4: 'some other value',
+          },
+        },
+      },
+      {
+        id: 3,
+        note: {
+          content: {
+            value1: 'some value',
+            value2: 'some different value',
+            value3: 'some other value',
+            value4: 'some unique value',
+          },
+        },
+      },
+    ]
+    const filterString = 'key1 = key2'
+    const propertiesAllowed = {
+      key1: ['note.content.value1', 'note.content.value2'],
+      key2: ['note.content.value3', 'note.content.value4'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+  })
+
+  test('filter string with single equal single property (includes)', () => {
+    const collections = [
+      { id: 1, note: { content: { title: { value: 'some VaLuE' } } } },
+      { id: 2, note: { content: { title: { value: 'some different vAlUe' } } } },
+      { id: 3 },
+    ]
+    const filterString = "key='VALUE'"
+    const propertiesAllowed = {
+      key: ['note.content.title.value'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+  })
+
+  test('filter string with single equal multi property (some includes)', () => {
+    const collections = [
+      { id: 1, note: { content: { title: { value1: 'some VaLuE' } } } },
+      { id: 2, note: { content: { title: { value2: 'some different vAlUe' } } } },
+      { id: 3 },
+    ]
+    const filterString = "key='VALUE'"
+    const propertiesAllowed = {
+      key: ['note.content.title.value1', 'note.content.title.value2'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+  })
+
+  test('filter string with double equal single property (exact match)', () => {
+    const collections = [
+      { id: 1, note: { content: { title: { value: 'some VaLuE' } } } },
+      { id: 2, note: { content: { title: { value: 'some different vAlUe' } } } },
+      { id: 3, note: { content: { title: { value: 'VALUE' } } } },
+    ]
+    const filterString = 'key==VALUE'
+    const propertiesAllowed = {
+      key: ['note.content.title.value'],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([3])
+  })
+
+  test('filter string with double equal multi property (some exact match)', () => {
+    const collections = [
+      { id: 1, note: { content: { title: { value1: 'some VaLuE', value2: 'VALUE' } } } },
+      { id: 2, note: { content: { title: { value2: 'some different vAlUe' } } } },
+      { id: 3, note: { content: { title: { value3: 'VALUE' } } } },
+    ]
+    const filterString = 'key==VALUE'
+    const propertiesAllowed = {
+      key: [
+        'note.content.title.value1',
+        'note.content.title.value2',
+        'note.content.title.value3',
+      ],
+    }
+
+    const result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 3])
+  })
+
+  test('filter profiles', () => {
+    const collections = [
+      {
+        id: 1,
+        metaReviewData: {
+          seniorAreaChairs: [
+            {
+              preferredName: 'Name One',
+              preferredId: '~Id1',
+              type: 'profile',
+            },
+          ],
+        },
+      },
+      {
+        id: 2,
+        metaReviewData: {
+          seniorAreaChairs: [
+            {
+              preferredName: 'Name TWO',
+              preferredId: '~Id2',
+              type: 'profile',
+            },
+          ],
+        },
+      },
+      {
+        id: 3,
+        metaReviewData: {
+          seniorAreaChairs: [
+            {
+              preferredName: 'Name two',
+              preferredId: undefined, // no id, should not throw error
+              type: 'profile',
+            },
+          ],
+        },
+      },
+    ]
+    let filterString = 'sac=two'
+    const propertiesAllowed = {
+      sac: ['metaReviewData.seniorAreaChairs'],
+    }
+
+    let result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([2, 3])
+
+    // exact match
+    filterString = 'sac=="Name two"'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([3])
+
+    // email exact match
+    filterString = 'sac=="two@email.com"'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.length).toEqual(0) // email is stored in edges so not available for filtering
+
+    // filter by id
+    filterString = 'sac=~Id'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+
+    // filter by exact id
+    filterString = 'sac=~Id2'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([2])
+  })
+
+  test('filter object authors', () => {
+    const note1Authors = [
+      {
+        fullname: 'Name One',
+        username: '~Id1',
+        institutions: [{ domain: 'institution.one', name: 'Institution One', country: 'TC' }],
+      },
+      {
+        fullname: 'Name Two',
+        username: '~Id2',
+        institutions: [{ domain: 'institution.two', name: 'Institution Two', country: 'TC' }],
+      },
+    ]
+    const note2Authors = [
+      {
+        fullname: 'Name Three',
+        username: '~Id3',
+        institutions: [
+          { domain: 'institution.three', name: 'Institution Three', country: 'TC' },
+        ],
+      },
+      {
+        fullname: 'Name Four',
+        username: '~Id4',
+        institutions: [
+          { domain: 'institution.four', name: 'Institution Four', country: 'TC' },
+        ],
+      },
+    ]
+    const collections = [
+      {
+        id: 1,
+        note: {
+          content: {
+            authors: { value: note1Authors },
+          },
+          authorSearchValue: note1Authors.map((p) => ({
+            ...p,
+            type: 'authorObj',
+          })),
+        },
+      },
+      {
+        id: 2,
+        note: {
+          content: {
+            authors: { value: note2Authors },
+          },
+          authorSearchValue: note2Authors.map((p) => ({
+            ...p,
+            type: 'authorObj',
+          })),
+        },
+      },
+    ]
+
+    // id match
+    let filterString = 'author=~Id'
+    const propertiesAllowed = {
+      author: ['note.authorSearchValue'],
+    }
+
+    let result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+
+    // id exact match
+    filterString = 'author=~Id3'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([2])
+
+    // name match
+    filterString = 'author=Name'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([1, 2])
+
+    // name exact match
+    filterString = 'author==Name Three'
+    result = filterCollections(
+      collections,
+      filterString,
+      filterOperators,
+      propertiesAllowed,
+      uniqueIdentifier
+    )
+    expect(result.filteredRows.map((p) => p.id)).toEqual([2])
+  })
+})
+
+describe('convertToString', () => {
+  test('return string when value to cast is string', () => {
+    const valueToCast = 'some string'
+    expect(convertToString(valueToCast)).toBe(valueToCast)
+  })
+  test('return string when value to cast is array', () => {
+    const valueToCast = ['value one', 'value two', 'value three']
+    const expectedValue = 'value one,value two,value three'
+    expect(convertToString(valueToCast)).toBe(expectedValue)
+  })
+  test('return undefined when value to cast is object', () => {
+    const valueToCast = { value: 'some value' }
+    const expectedValue = undefined
+    expect(convertToString(valueToCast)).toBe(expectedValue)
+  })
+  test('return undefined when value to cast is null', () => {
+    const valueToCast = null
+    const expectedValue = undefined
+    expect(convertToString(valueToCast)).toBe(expectedValue)
+  })
+})
+
+describe('convertToArray', () => {
+  test('return array when value to cast is array', () => {
+    const valueToCast = ['value one', 'value two', 'value three']
+    expect(convertToArray(valueToCast)).toEqual(valueToCast)
+  })
+  test('return array when value to cast is string with no comma', () => {
+    const valueToCast = 'some string'
+    const expectedValue = ['some string']
+    expect(convertToArray(valueToCast)).toEqual(expectedValue)
+  })
+  test('return array when value to cast is string with comma', () => {
+    const valueToCast = 'value one,value two,value three'
+    const expectedValue = ['value one', 'value two', 'value three']
+    expect(convertToArray(valueToCast)).toEqual(expectedValue)
+  })
+  test('return undefined when value to cast is non-array object', () => {
+    const valueToCast = { value: 'some string' }
+    const expectedValue = undefined
+    expect(convertToArray(valueToCast)).toBe(expectedValue)
+  })
+  test('return undefined when value to cast is undefined', () => {
+    const valueToCast = undefined
+    const expectedValue = undefined
+    expect(convertToArray(valueToCast)).toBe(expectedValue)
+  })
+})
