@@ -1,0 +1,1492 @@
+You are the lead full-stack engineer responsible for implementing a complete web application named:
+
+ProView — Course Project Submission and Peer Review Platform
+
+Your task is to implement the entire system end-to-end until it is ready for deployment, but DO NOT deploy it to any external hosting provider. Stop only after the application can be built and run locally in production mode, all required migrations and seed data work, and all automated checks pass.
+
+Do not stop after scaffolding.
+Do not leave core functionality as TODOs.
+Do not create fake/mock implementations for core business processes.
+Do not replace difficult requirements with simplified placeholders.
+Make reasonable engineering decisions when a minor detail is unspecified and document the decision.
+
+If an existing repository is present, inspect it first and preserve useful existing work. If the repository is empty, initialize it from scratch.
+
+============================================================
+1. SYSTEM PURPOSE
+============================================================
+
+ProView is NOT a general-purpose Learning Management System.
+
+It is a specialized platform for managing the lifecycle of university course projects:
+
+course setup
+→ project groups
+→ project submission
+→ peer/instructor review
+→ conflict-of-interest handling
+→ rebuttal
+→ final submission
+→ textual similarity checking
+→ grading
+→ cross-semester archive
+
+The primary users are:
+
+1. Student
+2. Instructor
+3. Administrator
+
+The system must focus on project submission and structured review. Do not add unrelated LMS functionality such as lectures, quizzes, certificates, payments, events, or general-purpose messaging.
+
+============================================================
+2. REQUIRED TECHNOLOGY STACK
+============================================================
+
+Use a maintainable modular-monolith architecture.
+
+Preferred stack:
+
+Monorepo:
+- pnpm workspaces
+
+Frontend:
+- React
+- TypeScript
+- Vite
+- React Router
+- TanStack Query
+- React Hook Form
+- Zod
+- Tailwind CSS
+- shadcn/ui or equivalent accessible component library
+
+Backend:
+- NestJS
+- TypeScript
+- REST API
+- OpenAPI / Swagger
+
+Database:
+- PostgreSQL
+- Prisma ORM
+- proper migrations
+
+Authentication:
+- local username/email + password authentication
+- secure password hashing using Argon2 or bcrypt
+- short-lived access token
+- refresh token using secure HttpOnly cookies
+- logout and token revocation
+- role + context-based authorization
+
+File storage:
+- storage abstraction
+- local filesystem or MinIO in development
+- S3-compatible implementation ready for production
+- no cloud account is required during implementation
+
+Development infrastructure:
+- Docker Compose
+- PostgreSQL
+- MinIO if used
+- backend
+- frontend where appropriate
+
+Testing:
+- backend unit/integration tests
+- frontend component tests where useful
+- Playwright end-to-end tests
+
+Code quality:
+- ESLint
+- Prettier
+- TypeScript strict mode
+
+Use stable current package versions and avoid deprecated libraries.
+
+============================================================
+3. REPOSITORY STRUCTURE
+============================================================
+
+Prefer a structure similar to:
+
+apps/
+  web/
+  api/
+
+packages/
+  shared/
+  config/
+
+docs/
+
+docker-compose.yml
+.env.example
+README.md
+
+Keep domain logic in the backend, not in UI components.
+
+Use clear module boundaries such as:
+
+AuthModule
+UsersModule
+CoursesModule
+OfferingsModule
+GroupsModule
+SubmissionsModule
+ReviewsModule
+ReviewerAssignmentsModule
+RebuttalsModule
+GradesModule
+SimilarityChecksModule
+ArchiveModule
+NotificationsModule
+AuditModule
+
+============================================================
+4. CORE DOMAIN MODEL
+============================================================
+
+Design the relational model carefully.
+
+At minimum include appropriate versions of these entities:
+
+User
+Course
+CourseOffering
+CourseMembership
+
+ProjectGroup
+GroupMember
+Project
+
+SubmissionStage
+Rubric
+RubricCriterion
+
+Submission
+SubmissionVersion
+SubmissionFile
+
+ReviewerAssignment
+ConflictOfInterestDeclaration
+
+Review
+ReviewCriterionResponse
+
+Rebuttal
+DiscussionMessage
+
+Grade
+GradeCriterionScore
+
+SimilarityCheck
+
+ArchivePublication / ArchiveVisibility
+
+Notification
+
+AuditLog
+
+Use UUIDs for primary identifiers unless there is a compelling reason not to.
+
+Add:
+
+createdAt
+updatedAt
+
+where appropriate.
+
+Use foreign keys, unique constraints, check constraints where practical, and indexes for frequent queries.
+
+Do not store data redundantly if it can be derived safely through relationships.
+
+============================================================
+5. COURSE MODEL
+============================================================
+
+Distinguish:
+
+Course
+and
+CourseOffering
+
+Example:
+
+Course:
+- IT3120E
+- Systems Analysis and Design
+
+CourseOffering:
+- course
+- semester
+- academic year
+- instructor(s)
+- status
+- configured workflow
+
+An instructor must be able to create a new offering based on configuration from a previous offering.
+
+Copy configuration, not historical student data.
+
+CourseOffering statuses:
+
+DRAFT
+ACTIVE
+CLOSED
+ARCHIVED
+
+============================================================
+6. COURSE MEMBERSHIP
+============================================================
+
+Support:
+
+INSTRUCTOR
+STUDENT
+
+membership within a CourseOffering.
+
+An Administrator manages global accounts and course catalog data.
+
+Provide instructor roster management:
+
+- add individual student
+- remove student while course is still editable
+- CSV import
+- validation and import summary
+
+Do not implement public enrollment into arbitrary courses.
+
+============================================================
+7. PROJECT GROUPS
+============================================================
+
+Students in an offering belong to project groups.
+
+Implement:
+
+- create group
+- rename group
+- add/remove members while allowed
+- assign project title
+- assign project description
+
+Instructor must be able to manage groups.
+
+A student cannot belong to multiple active project groups within the same course offering.
+
+Each ProjectGroup owns one Project for the course offering.
+
+============================================================
+8. SUBMISSION STAGES
+============================================================
+
+Do not hard-code database tables named ProposalSubmission and FinalSubmission.
+
+Use generic SubmissionStage configuration.
+
+For the initial implementation, automatically create:
+
+Stage 1:
+Proposal
+
+Stage 2:
+Final Report
+
+Each stage contains configuration such as:
+
+- name
+- sequence
+- openAt
+- submissionDeadline
+- reviewDeadline
+- rebuttalDeadline
+- allowReviews
+- allowRebuttal
+- requireSimilarityCheck
+- rubricId
+
+Default:
+
+Proposal:
+- peer review enabled
+- rebuttal enabled
+- similarity check disabled
+
+Final Report:
+- review configurable
+- rebuttal configurable
+- similarity check enabled
+
+The design must support additional stages later without schema changes.
+
+============================================================
+9. SUBMISSION VERSIONING
+============================================================
+
+Each Project + SubmissionStage has one logical Submission.
+
+A Submission may have many SubmissionVersions.
+
+Never overwrite old files.
+
+SubmissionVersion must contain:
+
+- version number
+- uploadedBy
+- uploadedAt
+- change note
+- file metadata
+- SHA-256 checksum
+
+Allow only PDF for the initial system.
+
+Validate:
+
+- MIME type
+- extension
+- configured maximum size
+- file presence
+
+Use randomized storage paths.
+
+Do not trust client filenames as storage filenames.
+
+Student UI must display:
+
+- current version
+- previous versions
+- timestamps
+- submitter
+- change notes
+
+Review must reference the exact SubmissionVersion that was reviewed.
+
+============================================================
+10. SUBMISSION WORKFLOW
+============================================================
+
+Use explicit workflow state instead of scattered booleans.
+
+Suggested statuses:
+
+DRAFT
+SUBMITTED
+UNDER_REVIEW
+REBUTTAL_OPEN
+REVIEW_COMPLETED
+FINALIZED
+
+A stage may move through relevant states depending on its configuration.
+
+Enforce transitions in backend business logic.
+
+Examples:
+
+DRAFT → SUBMITTED
+SUBMITTED → UNDER_REVIEW
+UNDER_REVIEW → REBUTTAL_OPEN
+REBUTTAL_OPEN → REVIEW_COMPLETED
+REVIEW_COMPLETED → FINALIZED
+
+Do not allow invalid transitions.
+
+Record important state transitions in AuditLog.
+
+============================================================
+11. REVIEWER ASSIGNMENT
+============================================================
+
+Support two reviewer types:
+
+1. Instructor reviewer
+2. Peer project-group reviewer
+
+Peer review is group-to-group.
+
+A reviewer assignment targets a reviewer ProjectGroup.
+
+Members of that reviewer group may collaborate on one review draft.
+
+The submitted review records which student actually submitted it on behalf of the group.
+
+ReviewerAssignment statuses:
+
+ASSIGNED
+IN_PROGRESS
+COI_REQUESTED
+REASSIGNMENT_APPROVED
+REASSIGNED
+SUBMITTED
+CANCELLED
+
+Implement both:
+
+- manual assignment by instructor
+- automatic peer reviewer assignment
+
+Automatic assignment must:
+
+- never assign a group to itself
+- reject conflicts detectable from system data
+- balance reviewer workload as evenly as possible
+- avoid duplicate assignment of the same reviewer group to the same submission
+- avoid reciprocal assignments A→B and B→A when alternatives exist
+- produce deterministic and explainable results
+
+Place assignment logic in a dedicated domain service.
+
+Add tests for the assignment algorithm.
+
+============================================================
+12. CONFLICT OF INTEREST
+============================================================
+
+The system can only automatically detect conflicts represented in stored data.
+
+Automatic rules must include at least:
+
+- reviewer group equals author group
+- shared student membership that makes the assignment invalid
+
+Structure the conflict service so historical group relationships can also be checked.
+
+Additionally, a reviewer may self-declare a conflict.
+
+ConflictOfInterestDeclaration fields:
+
+- assignmentId
+- declaredBy
+- reason
+- createdAt
+- status
+- decidedBy
+- decisionAt
+- decisionNote
+
+Statuses:
+
+PENDING
+APPROVED
+REJECTED
+
+When approved:
+
+- invalidate/reassign the reviewer assignment
+- instructor may manually choose a replacement
+- or rerun auto-assignment for the affected submission
+
+============================================================
+13. REVIEW MODEL
+============================================================
+
+Reviews must be structured using a Rubric.
+
+Rubric:
+- name
+- description
+
+RubricCriterion:
+- title
+- description
+- weight
+- scoreMin
+- scoreMax
+- order
+
+A Review must support:
+
+- criterion scores
+- criterion comments
+- overall comments
+- strengths
+- weaknesses
+- recommendation if configured
+- draft status
+- submitted status
+- submitter
+- submissionVersion reviewed
+- timestamps
+
+Reviewers may edit a review before submission.
+
+Submitted reviews become immutable except for instructor-authorized correction.
+
+============================================================
+14. REVIEWER ANONYMITY
+============================================================
+
+Course offering must support:
+
+NAMED
+ANONYMOUS_TO_AUTHORS
+
+This means:
+
+When NAMED:
+authors can see reviewer group / reviewer identity according to review rules.
+
+When ANONYMOUS_TO_AUTHORS:
+authors must not see the peer reviewer group or reviewer student identity.
+
+Important:
+
+The Instructor must ALWAYS see the real reviewer identity.
+
+Administrators with appropriate permission may also see it.
+
+Do not implement client-side-only hiding.
+
+Identity protection must be enforced at API serialization / authorization level.
+
+Write automated authorization tests proving that anonymous identity cannot leak through:
+
+- API responses
+- nested resources
+- notification payloads
+- archive data
+- review metadata
+
+============================================================
+15. REBUTTAL
+============================================================
+
+After reviews are submitted and the rebuttal window is open:
+
+Authoring group members may:
+
+- read visible reviews
+- submit one group rebuttal
+- edit it until the rebuttal deadline
+- submit/finalize it
+
+Rebuttal should support:
+
+- general response
+- optional response associated with a particular review
+- author student
+- group
+- timestamps
+
+Once finalized or deadline passes, normal students may no longer edit it.
+
+Instructor may reopen it if necessary.
+
+============================================================
+16. REVIEW DISCUSSION
+============================================================
+
+Support scoped discussion attached to a review/submission.
+
+Do NOT implement a general messaging system.
+
+DiscussionMessage:
+
+- submission/review context
+- author
+- content
+- timestamp
+
+Visibility must follow the same anonymity and authorization rules.
+
+If anonymity is enabled, a discussion message must not expose reviewer identity to authors.
+
+============================================================
+17. FINAL REPORT AND COOPY WORKFLOW
+============================================================
+
+COOPY is NOT an API integration.
+
+Do not invent a REST API for COOPY.
+
+Treat it as a manual asynchronous external process.
+
+SimilarityCheck statuses:
+
+PENDING
+SUBMITTED_EXTERNALLY
+COMPLETED
+FAILED
+WAIVED
+
+Workflow:
+
+1. Final report is submitted.
+2. SimilarityCheck is created with PENDING.
+3. Authorized Instructor/Admin obtains the report.
+4. Staff manually submits it to COOPY outside the system.
+5. Staff marks it SUBMITTED_EXTERNALLY.
+6. COOPY result is received externally.
+7. Staff records:
+   - similarity percentage if available
+   - result date
+   - notes
+   - optional result PDF
+8. Status becomes COMPLETED.
+
+Also allow FAILED and WAIVED with mandatory reason.
+
+The system must make it clear that:
+
+- this check concerns textual similarity
+- similarity does not automatically mean plagiarism
+- ideas, diagrams, project topics, and conceptual similarity are not automatically judged by the system
+
+============================================================
+18. GRADING
+============================================================
+
+Instructor must have a consolidated grading workspace.
+
+For one Project + stage, display:
+
+- project information
+- submission version
+- previous versions
+- reviewers
+- actual reviewer identities for instructor
+- review scores/comments
+- rebuttal
+- discussion
+- similarity-check result where applicable
+- rubric
+- grading fields
+
+Grade may contain:
+
+- overall score
+- per-criterion scores
+- instructor feedback
+- draft/published status
+
+Grade statuses:
+
+DRAFT
+PUBLISHED
+
+Students must not see draft grades.
+
+Published grades become visible to the authoring group.
+
+Record publishing in AuditLog.
+
+============================================================
+19. CROSS-SEMESTER ARCHIVE
+============================================================
+
+Do NOT duplicate project data into a separate archive copy.
+
+Archive should operate on completed Project records.
+
+Student profile must show projects from previous course offerings in which the student
+was a project-group member.
+
+For future cohorts, an archived report is visible only when:
+
+- the course offering is CLOSED or ARCHIVED
+- instructor explicitly approves the report as reference material
+
+Store an approval/publication record.
+
+Archive should support:
+
+- course filter
+- semester filter
+- project title search
+- student search for instructor/admin
+- approved reference browsing for eligible students
+
+Avoid unrestricted bulk downloading.
+
+For student reference access:
+
+- prefer inline PDF viewing
+- expose downloads only when policy explicitly permits
+
+Authorization must be enforced server-side.
+
+============================================================
+20. NOTIFICATIONS
+============================================================
+
+Implement in-app notifications.
+
+Examples:
+
+- new reviewer assignment
+- review deadline approaching
+- COI decision
+- review submitted
+- rebuttal window opened
+- final submission recorded
+- similarity result recorded
+- grade published
+
+Notification fields:
+
+- recipient
+- type
+- title
+- body
+- target URL
+- readAt
+- createdAt
+
+Do not implement full chat.
+
+Email integration may be left behind an interface, but in-app notifications must work.
+
+============================================================
+21. AUDIT LOG
+============================================================
+
+Record important administrative and academic actions:
+
+- course offering creation
+- configuration changes
+- roster import
+- group changes
+- stage state changes
+- submission
+- reviewer assignment
+- COI decision
+- review submission
+- rebuttal submission
+- similarity check updates
+- grade publication
+- archive approval
+- privileged file access where appropriate
+
+AuditLog should include:
+
+- actor
+- action
+- entity type
+- entity id
+- timestamp
+- relevant metadata
+
+Audit records must not be editable through normal APIs.
+
+============================================================
+22. AUTHORIZATION MODEL
+============================================================
+
+Use:
+
+RBAC + context-based authorization.
+
+Global role alone is NOT sufficient.
+
+Create explicit policy functions/services such as:
+
+canViewOffering(user, offering)
+canManageOffering(user, offering)
+canViewProject(user, project)
+canEditSubmission(user, submission)
+canSubmitVersion(user, submission)
+canReview(user, reviewerAssignment)
+canViewReview(user, review)
+canViewReviewerIdentity(user, review)
+canSubmitRebuttal(user, submission)
+canGrade(user, project)
+canManageSimilarityCheck(user, submission)
+canViewArchiveReport(user, project)
+
+Do not scatter authorization logic randomly through controllers.
+
+Prefer guards/policy services.
+
+Every backend endpoint must perform authorization.
+
+Write negative authorization tests.
+
+============================================================
+23. ADMIN FUNCTIONALITY
+============================================================
+
+Administrator dashboard must support:
+
+- list/search users
+- create user
+- activate/deactivate user
+- reset user password administratively
+- assign global role
+- manage course catalog
+- inspect audit logs
+
+Do not let an admin silently impersonate a user unless an audited impersonation feature is
+explicitly implemented.
+
+Impersonation is not required.
+
+============================================================
+24. STUDENT UI
+============================================================
+
+Create a polished responsive student interface.
+
+Required pages:
+
+Login
+
+Student Dashboard:
+- active courses
+- current project
+- upcoming deadlines
+- assigned reviews
+- notifications
+
+Course Offering:
+- project/group
+- stage timeline
+- submission status
+- review status
+- grade status
+
+Project Workspace:
+- group members
+- title
+- description
+- lifecycle timeline
+
+Submission Workspace:
+- current file
+- upload revision
+- version history
+- submission deadline
+- submit action
+- status
+
+Peer Review Dashboard:
+- assigned reviews
+- status
+- deadline
+- COI action
+
+Review Workspace:
+- submission viewer
+- rubric
+- score fields
+- comments
+- save draft
+- submit review
+
+Rebuttal Workspace:
+- visible reviews
+- general rebuttal
+- review-specific response where supported
+- submit/finalize
+
+Project Archive:
+- own previous projects
+- approved reference projects where permitted
+
+Profile:
+- name
+- email
+- password change
+
+============================================================
+25. INSTRUCTOR UI
+============================================================
+
+Required pages:
+
+Instructor Dashboard:
+- active offerings
+- submission/review progress
+- pending COI requests
+- pending similarity checks
+- grading queue
+
+Course Catalog / Offering Management
+
+Create Offering:
+- course
+- semester
+- copy configuration from prior offering
+
+Offering Configuration:
+- stages
+- dates/deadlines
+- anonymity
+- review count
+- rubric
+- similarity requirement
+
+Roster:
+- list students
+- add
+- remove
+- CSV import
+
+Groups:
+- create/manage groups
+- project titles
+- membership
+
+Reviewer Assignments:
+- automatic assignment
+- manual assignment
+- workload view
+- conflict display
+
+Conflict Requests:
+- approve/reject
+- reassign reviewer
+
+Review Monitoring:
+- completion status
+- deadlines
+
+Similarity Queue:
+- pending reports
+- mark external submission
+- enter/upload result
+
+Consolidated Grading Workspace:
+- complete evidence view
+- grade draft
+- publish grade
+
+Archive Management:
+- approve/revoke reference visibility
+
+============================================================
+26. ADMIN UI
+============================================================
+
+Required pages:
+
+Admin Dashboard
+
+Users:
+- search
+- create
+- edit
+- activate/deactivate
+- role management
+- reset password
+
+Courses:
+- course catalog CRUD
+
+Audit:
+- filter by actor
+- action
+- entity
+- date
+
+============================================================
+27. UI / UX REQUIREMENTS
+============================================================
+
+Use a professional academic application style.
+
+Use the ProView visual identity approximately based on:
+
+Navy:
+#0D1B3D
+
+Accent range:
+#1565E8
+#3757F0
+#584AF7
+#7A3CFF
+
+Do not overuse gradients.
+
+Important workflows should be status-driven rather than CRUD-looking.
+
+Use:
+
+- stage timeline
+- status badges
+- progress indicators
+- deadline indicators
+- empty states
+- loading states
+- validation messages
+- confirmation dialogs for destructive/final actions
+
+Use concise professional UI copy.
+
+Avoid verbose marketing language.
+Avoid generic AI-sounding filler text.
+
+Accessibility:
+
+- semantic HTML
+- keyboard navigation
+- visible focus states
+- form labels
+- appropriate ARIA only where required
+- sufficient contrast
+
+Responsive layout must work at least on:
+
+- desktop
+- tablet
+- modern mobile width
+
+============================================================
+28. SECURITY REQUIREMENTS
+============================================================
+
+Implement at minimum:
+
+- password hashing
+- secure authentication cookies/tokens
+- refresh-token rotation or revocation strategy
+- server-side authorization
+- DTO/input validation
+- SQL injection protection through ORM
+- XSS-safe rendering
+- CORS configuration
+- CSRF protection where applicable to chosen auth model
+- request rate limiting for authentication
+- secure HTTP headers
+- upload MIME/extension validation
+- upload size limits
+- randomized storage names
+- authorization before file access
+- no sensitive data in logs
+- sanitized error responses
+- secrets only via environment variables
+
+Do not expose private storage objects directly.
+
+File access must pass through authorized backend logic or signed short-lived URLs.
+
+============================================================
+29. DATABASE QUALITY
+============================================================
+
+Provide:
+
+- complete Prisma schema
+- migrations
+- indexes
+- constraints
+- seed script
+
+Seed realistic demo data:
+
+Users:
+admin@proview.local
+instructor@proview.local
+
+At least 8–12 student demo accounts.
+
+Create:
+
+- Systems Analysis and Design course
+- one active course offering
+- multiple project groups
+- Proposal and Final Report stages
+- sample rubric
+- several submissions
+- assignments
+- reviews
+- a rebuttal
+- one pending similarity check
+- one completed similarity check
+- one graded archived project
+
+Use an obvious development-only default password documented in README.
+
+Never use that default in production configuration.
+
+============================================================
+30. API QUALITY
+============================================================
+
+Expose REST endpoints with:
+
+- consistent resource naming
+- validation
+- appropriate HTTP status codes
+- pagination for list endpoints
+- sorting/filtering where useful
+- structured error response format
+
+Generate OpenAPI documentation.
+
+Do not expose internal ORM objects blindly.
+
+Use DTOs / response models.
+
+============================================================
+31. TEST REQUIREMENTS
+============================================================
+
+Implement meaningful tests.
+
+Backend unit tests:
+
+- workflow transitions
+- reviewer auto-assignment
+- conflict detection
+- anonymity policy
+- archive visibility policy
+- similarity workflow
+- grade publication
+
+Integration tests:
+
+- authentication
+- course/offering creation
+- submission/version creation
+- reviewer assignment
+- review submission
+- rebuttal
+- grading
+- archive access
+
+Playwright E2E must cover at least:
+
+Scenario 1 — Instructor setup:
+Instructor logs in
+→ creates/copies offering
+→ configures stages
+→ imports/manages students
+→ creates groups
+→ configures rubric.
+
+Scenario 2 — Submission:
+Student logs in
+→ opens project
+→ uploads Proposal v1
+→ uploads Proposal v2
+→ submits v2
+→ version history remains available.
+
+Scenario 3 — Reviewer assignment:
+Instructor auto-assigns reviewers
+→ no self assignment exists
+→ reviewer workload is reasonable.
+
+Scenario 4 — COI:
+Student reviewer declares conflict
+→ instructor approves
+→ reviewer is reassigned.
+
+Scenario 5 — Review and anonymity:
+Reviewer submits structured review
+→ instructor sees reviewer identity
+→ author sees review
+→ author does NOT see reviewer identity when anonymity is enabled.
+
+Scenario 6 — Rebuttal:
+Author submits rebuttal
+→ instructor sees review + rebuttal together.
+
+Scenario 7 — Final report and COOPY:
+Student submits final report
+→ similarity check becomes pending
+→ instructor marks external submission
+→ records result
+→ result appears in grading workspace.
+
+Scenario 8 — Grading:
+Instructor enters grade
+→ student cannot see draft
+→ instructor publishes
+→ student sees published grade.
+
+Scenario 9 — Archive:
+Instructor closes offering
+→ approves a project as reference
+→ eligible student from later offering can view it
+→ non-approved reports remain inaccessible.
+
+Scenario 10 — Security:
+Unauthorized student attempts direct API/file access to another private submission
+→ request is rejected.
+
+============================================================
+32. DOCUMENTATION
+============================================================
+
+Create:
+
+README.md
+
+docs/architecture.md
+docs/domain-model.md
+docs/workflow.md
+docs/authorization.md
+docs/database.md
+docs/api.md
+docs/testing.md
+docs/deployment-checklist.md
+
+README must include:
+
+- project overview
+- architecture summary
+- prerequisites
+- environment setup
+- Docker setup
+- database migration
+- seed command
+- development commands
+- test commands
+- production build commands
+- demo accounts
+
+authorization.md must contain a permission matrix for:
+
+Student author
+Student peer reviewer
+Instructor
+Administrator
+
+across important resources/actions.
+
+workflow.md must document state transitions.
+
+============================================================
+33. DEVELOPMENT ENVIRONMENT
+============================================================
+
+Create .env.example with all required variables.
+
+Example categories:
+
+DATABASE_URL
+
+JWT / authentication secrets
+
+FRONTEND_URL
+
+API_URL
+
+storage configuration
+
+file size configuration
+
+Do not commit actual secrets.
+
+Provide Docker Compose so that a fresh machine can run:
+
+docker compose up -d
+
+then install/migrate/seed/run with documented commands.
+
+============================================================
+34. PRODUCTION READINESS
+============================================================
+
+Before considering the work complete:
+
+1. Run formatter.
+2. Run lint.
+3. Run TypeScript type checking.
+4. Run backend unit tests.
+5. Run integration tests.
+6. Run frontend tests.
+7. Run Playwright E2E tests.
+8. Run database migrations from an empty database.
+9. Run seed from an empty database.
+10. Build frontend production bundle.
+11. Build backend production bundle.
+12. Start the application using production builds locally.
+13. Fix all errors found.
+
+Do not report success while any required check is failing.
+
+Warnings that represent genuine defects should also be fixed.
+
+============================================================
+35. OUT OF SCOPE
+============================================================
+
+Do NOT implement:
+
+- lectures
+- learning modules
+- quizzes
+- certificates
+- payments
+- course marketplace
+- event management
+- general chat/messenger
+- AI grading
+- AI-generated reviews
+- automatic plagiarism detection
+- plagiarism judgment
+- real COOPY API integration
+- microservices
+- Kubernetes
+
+Keep the architecture appropriate for a small university pilot.
+
+============================================================
+36. IMPLEMENTATION ORDER
+============================================================
+
+Work autonomously through these milestones:
+
+Phase 1:
+Repository and infrastructure setup
+
+Phase 2:
+Database/domain model and migrations
+
+Phase 3:
+Authentication and authorization
+
+Phase 4:
+Course offerings, roster, project groups
+
+Phase 5:
+Submission stages and versioned submissions
+
+Phase 6:
+Rubrics and reviewer assignment
+
+Phase 7:
+Conflict-of-interest workflow
+
+Phase 8:
+Reviews and anonymity enforcement
+
+Phase 9:
+Rebuttal/discussion
+
+Phase 10:
+Final submission and COOPY manual workflow
+
+Phase 11:
+Consolidated grading
+
+Phase 12:
+Archive
+
+Phase 13:
+Notifications and audit logging
+
+Phase 14:
+Student UI completion
+
+Phase 15:
+Instructor UI completion
+
+Phase 16:
+Admin UI completion
+
+Phase 17:
+Automated testing
+
+Phase 18:
+Documentation and production build validation
+
+Do not ask for confirmation after each phase.
+Continue until the complete implementation is finished.
+
+============================================================
+37. ENGINEERING RULES
+============================================================
+
+Keep functions and classes focused.
+
+Do not create giant controllers.
+
+Do not put business logic directly in React components.
+
+Use database transactions for multi-step operations that must remain consistent.
+
+Avoid unnecessary abstraction, but keep domain boundaries clear.
+
+Do not add a new infrastructure component unless it solves an actual requirement.
+
+Prefer explicit readable code over clever code.
+
+Do not add comments that merely restate the code.
+
+Do not produce generic filler documentation.
+
+Do not invent features because they sound useful.
+
+When a requirement has multiple reasonable implementations, choose the simpler design
+that preserves the business rule.
+
+============================================================
+38. FINAL ACCEPTANCE CRITERIA
+============================================================
+
+The project is complete only when a reviewer can clone the repository and, following the
+README:
+
+1. start dependencies;
+2. configure environment variables;
+3. migrate the database;
+4. seed demo data;
+5. start the application;
+6. log in as Admin, Instructor, and Student;
+7. complete the full workflow:
+
+Course Offering
+→ Groups
+→ Proposal Submission
+→ Reviewer Assignment
+→ Peer Review
+→ Conflict/Reassignment
+→ Rebuttal
+→ Final Report
+→ Manual COOPY Result
+→ Grading
+→ Archive
+
+without modifying the source code.
+
+All important authorization rules must be enforced by the backend.
+
+All tests must pass.
+
+The production build must succeed.
+
+============================================================
+39. DO NOT DEPLOY YET
+============================================================
+
+DO NOT deploy to Vercel, AWS, Azure, GCP, Render, Railway, Fly.io, DigitalOcean, or any
+other hosting provider.
+
+Instead, after the implementation is complete:
+
+- ensure production Docker/build configuration is ready;
+- create docs/deployment-checklist.md;
+- list all production environment variables;
+- identify any values that must be supplied by the operator;
+- document database backup/migration requirements;
+- document S3/object-storage configuration;
+- document HTTPS/reverse-proxy requirements;
+- document the exact deployment commands that would be used later.
+
+Then stop.
+
+============================================================
+40. FINAL RESPONSE
+============================================================
+
+When all implementation work is complete, provide a concise engineering handoff containing:
+
+- architecture implemented;
+- important design decisions;
+- implemented modules;
+- database/migration status;
+- demo accounts;
+- commands to run locally;
+- tests executed and their results;
+- production build result;
+- anything that still requires an external production secret/account;
+- exact next step for deployment.
+
+Do not claim that something works unless you actually ran the corresponding validation.
+
+Begin by inspecting the repository, then implement the system.

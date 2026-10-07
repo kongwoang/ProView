@@ -1,0 +1,608 @@
+============================================================
+41. IMPORTANT ARCHITECTURE UPDATE — BASE THE FRONTEND ON OPENREVIEW
+============================================================
+
+The previous instructions proposed building the frontend from scratch with React + Vite.
+
+OVERRIDE that part of the previous instructions.
+
+For the ProView frontend, use the official OpenReview web application as the starting
+point and adapt it into ProView rather than rebuilding the entire review interface from
+scratch.
+
+Upstream reference:
+
+https://github.com/openreview/openreview-web
+
+The objective is NOT to reproduce OpenReview.net in full.
+
+The objective is to reuse the mature OpenReview frontend structure, interaction patterns,
+review-oriented components, PDF/submission presentation ideas, forms, navigation
+patterns, and general academic-review UX, then remove the conference-specific
+functionality and adapt the remaining application to the ProView course-project domain.
+
+The ProView backend defined in the previous prompt remains our own application.
+
+DO NOT redesign the backend to imitate OpenReview's internal backend architecture.
+
+============================================================
+42. FIRST STEP: INSPECT OPENREVIEW BEFORE MODIFYING IT
+============================================================
+
+Before writing ProView frontend code:
+
+1. Clone the current official openreview-web repository.
+2. Record:
+   - upstream repository URL
+   - upstream commit hash
+   - upstream version/tag if applicable
+   - license
+3. Read:
+   - README
+   - LICENSE
+   - CONTRIBUTING
+   - package.json
+   - project structure
+   - routing structure
+   - shared components
+   - form components
+   - forum/review components
+   - submission-related pages
+   - profile pages
+   - API/client layer
+   - authentication assumptions
+   - test setup
+4. Run the existing frontend checks/build where practical before making major changes.
+5. Document the useful OpenReview components and architecture in:
+
+docs/openreview-adaptation.md
+
+Do not blindly edit files before understanding the repository.
+
+============================================================
+43. LICENSE REQUIREMENTS
+============================================================
+
+openreview-web is licensed under AGPL-3.0-or-later.
+
+Treat this as a real engineering constraint.
+
+Therefore:
+
+- preserve the OpenReview copyright/license notices required by the upstream license;
+- keep the applicable AGPL license file in the repository;
+- document that ProView's frontend is derived from openreview-web;
+- maintain a clear record of upstream modifications;
+- do not remove legally required attribution;
+- do not claim original authorship of reused OpenReview code;
+- make the resulting source structure suitable for satisfying AGPL source-availability
+  requirements when ProView is eventually deployed.
+
+Create:
+
+docs/upstream-openreview.md
+
+containing:
+- upstream URL;
+- upstream commit;
+- upstream license;
+- major files/components reused;
+- major files/components replaced;
+- modifications made for ProView.
+
+Do not copy code from any OpenReview repository whose license or public availability
+cannot be verified.
+
+============================================================
+44. DO NOT USE THE OPENREVIEW BACKEND AS THE PROVIEW BACKEND
+============================================================
+
+Do NOT make ProView dependent on the production OpenReview.net service.
+
+Do NOT require users to have OpenReview accounts.
+
+Do NOT call api.openreview.net or api2.openreview.net for normal ProView operations.
+
+Do NOT attempt to recreate the entire OpenReview infrastructure.
+
+The backend remains the ProView backend specified earlier:
+
+- NestJS
+- PostgreSQL
+- Prisma
+- ProView authentication
+- ProView authorization policies
+- ProView domain model
+- ProView storage
+- ProView API
+
+The frontend must communicate with the ProView API.
+
+If openreview-web currently uses OpenReview-specific client calls, introduce a clean
+ProView data-access layer and progressively replace those calls.
+
+Recommended structure:
+
+lib/
+  api/
+    client
+    auth
+    courses
+    projects
+    submissions
+    reviews
+    rebuttals
+    grades
+    archive
+    similarityChecks
+
+The UI must depend on this ProView API layer rather than OpenReview's data model.
+
+============================================================
+45. FRONTEND FRAMEWORK OVERRIDE
+============================================================
+
+Because openreview-web is the frontend base:
+
+Do NOT migrate it to Vite merely to satisfy the earlier prompt.
+
+Retain Next.js and the existing frontend build system unless a specific technical reason
+requires changing it.
+
+The following earlier frontend requirements are therefore overridden:
+
+OLD:
+React + Vite
+
+NEW:
+React + Next.js, based on openreview-web
+
+Continue to use TypeScript for new ProView code wherever practical.
+
+If existing upstream files are JavaScript, do not perform a risky whole-repository
+TypeScript rewrite merely for cosmetic consistency.
+
+New ProView modules should preferably use TypeScript.
+
+============================================================
+46. OPENREVIEW UX TO REUSE
+============================================================
+
+Study OpenReview's current implementation and reuse/adapt suitable interaction patterns
+for:
+
+- submission listing;
+- submission detail;
+- PDF/document viewing;
+- reviewer forms;
+- review display;
+- review discussion/forum-style interaction;
+- score/rating inputs;
+- author/reviewer identity presentation;
+- profile presentation;
+- status and deadline information;
+- tabs/panels around one submission;
+- responsive academic workflow layouts;
+- loading and error states.
+
+Prefer adapting proven components over recreating equivalent components from scratch.
+
+However, reuse code only when it actually fits ProView.
+
+Do not preserve OpenReview abstractions merely because they exist upstream.
+
+============================================================
+47. REMOVE OPENREVIEW CONFERENCE-SPECIFIC FUNCTIONALITY
+============================================================
+
+ProView is not a research-conference management system.
+
+Remove, disable, or exclude from normal ProView navigation all concepts that do not
+belong to the project requirements.
+
+Examples include, where present:
+
+- conference venue creation;
+- conference program;
+- accepted-paper program pages;
+- area chairs;
+- senior area chairs;
+- meta-reviewers;
+- program chairs as OpenReview-specific roles;
+- bidding;
+- reviewer expertise matching;
+- paper recruitment;
+- conference invitations;
+- public research-paper discovery;
+- literature browsing;
+- research publication import;
+- author publication history unrelated to course projects;
+- conference decision workflows;
+- camera-ready conference publication;
+- conference-specific registration;
+- venue request workflows;
+- OpenReview-specific moderation infrastructure.
+
+Do not spend large amounts of time perfectly deleting deep unused upstream code if it is
+safely unreachable and does not affect the build.
+
+Prefer:
+
+1. remove it from routing/navigation;
+2. remove runtime dependencies;
+3. remove dead code when safe;
+4. keep upstream code only when removal would introduce unnecessary regression risk.
+
+============================================================
+48. MAP OPENREVIEW CONCEPTS TO PROVIEW CONCEPTS
+============================================================
+
+Create a documented conceptual mapping before implementing UI changes.
+
+Example mapping:
+
+OpenReview concept            → ProView concept
+
+Venue                         → Course Offering
+Paper / Note                  → Project Submission
+Authors                       → Project Group
+Reviewer                      → Instructor or Peer Project Group
+Review Invitation/Form        → Rubric / Review Assignment
+Review                        → Review
+Author Response               → Rebuttal
+Forum                         → Submission Review Discussion
+Decision                      → Instructor Grade / Final Evaluation
+Revision                      → Submission Version
+Profile                       → Student / Instructor Profile
+
+This mapping is conceptual only.
+
+DO NOT force ProView's database to reproduce OpenReview's Note/Invitation/Group data
+model.
+
+The ProView relational domain model defined earlier remains authoritative.
+
+Document the final mapping in:
+
+docs/openreview-adaptation.md
+
+============================================================
+49. PROVIEW INFORMATION ARCHITECTURE
+============================================================
+
+After adapting OpenReview, the visible product navigation should look like ProView, not
+like a conference website.
+
+Student navigation:
+
+Dashboard
+Courses
+My Project
+Reviews
+Archive
+Notifications
+Profile
+
+Instructor navigation:
+
+Dashboard
+Courses
+Review Management
+Grading
+Similarity Checks
+Archive
+Notifications
+Profile
+
+Administrator navigation:
+
+Dashboard
+Users
+Courses
+Audit Logs
+
+Do not expose OpenReview terminology to users unless it is also meaningful for ProView.
+
+For example:
+
+avoid:
+Venue
+Note
+Invitation
+
+prefer:
+Course
+Submission
+Review Assignment
+
+============================================================
+50. PROVIEW BRANDING
+============================================================
+
+Replace visible OpenReview branding with ProView branding while retaining legally
+required source-code/license attribution.
+
+Product name:
+
+ProView
+
+Subtitle where useful:
+
+Course Project Submission and Peer Review Platform
+
+Visual identity:
+
+Navy:
+#0D1B3D
+
+Accent colors:
+#1565E8
+#3757F0
+#584AF7
+#7A3CFF
+
+Keep the interface restrained and academic.
+
+Do not simply recolor every OpenReview page.
+
+Remove OpenReview-specific public-site marketing/navigation.
+
+The authenticated application is the primary product.
+
+============================================================
+51. PRIORITIZE OPENREVIEW-LIKE REVIEW EXPERIENCE
+============================================================
+
+One reason for using OpenReview as a base is its review workflow.
+
+The ProView submission page should therefore become one of the central screens.
+
+For a student author, a project submission page should contain, according to permissions:
+
+- project title;
+- group members;
+- course/stage;
+- current submission version;
+- PDF viewer;
+- version history;
+- submitted reviews;
+- reviewer labels appropriate to anonymity mode;
+- rebuttal;
+- permitted discussion;
+- current workflow status;
+- deadlines;
+- grade when published.
+
+For a reviewer, the same general context should support:
+
+- PDF viewing;
+- rubric;
+- criterion scores;
+- criterion comments;
+- strengths;
+- weaknesses;
+- overall comments;
+- draft saving;
+- final review submission;
+- conflict-of-interest declaration.
+
+For the instructor, the same context should support:
+
+- real reviewer identities;
+- assignment status;
+- all reviews;
+- rebuttal;
+- discussion;
+- similarity-check information;
+- grading controls.
+
+Reuse the strengths of OpenReview's "submission + forum/review context in one place"
+interaction model where it fits these requirements.
+
+============================================================
+52. ADAPT, DO NOT SKIN
+============================================================
+
+This must be a genuine domain adaptation, not merely an OpenReview skin.
+
+A user should not encounter broken conference concepts beneath renamed labels.
+
+Bad implementation:
+
+- Rename "Venue" to "Course" while the underlying page still assumes conference chairs.
+- Rename "Paper" to "Project" while API calls still depend on OpenReview Notes.
+- Hide conference navigation while the route remains necessary for normal operation.
+- Store ProView data using arbitrary OpenReview JSON Notes only because the UI used them.
+
+Correct implementation:
+
+- reuse visual/layout/form components;
+- replace OpenReview-specific data fetching;
+- connect components to ProView domain DTOs;
+- simplify screens for classroom workflows;
+- delete or isolate conference-specific assumptions.
+
+============================================================
+53. CREATE A PROVIEW ADAPTER LAYER
+============================================================
+
+Do not let reused OpenReview components directly consume Prisma objects or raw NestJS
+responses.
+
+Create stable frontend view models.
+
+Examples:
+
+ProjectSubmissionViewModel
+ReviewViewModel
+ReviewerAssignmentViewModel
+RubricViewModel
+RebuttalViewModel
+CourseOfferingViewModel
+GradeViewModel
+
+Build adapter functions from ProView API DTOs into the props required by reused
+components.
+
+When a reused OpenReview component is heavily coupled to OpenReview data types, choose
+one of:
+
+A. refactor the component into a domain-neutral component;
+
+B. copy the minimal component into a ProView-specific component while preserving
+   applicable license information;
+
+C. replace the component with a simpler ProView implementation.
+
+Choose based on maintainability, not on maximizing code reuse.
+
+============================================================
+54. DO NOT RECREATE OPENREVIEW'S GENERIC INVITATION SYSTEM
+============================================================
+
+OpenReview is designed for highly configurable academic publishing workflows.
+
+ProView has a much narrower problem.
+
+Do not implement a generic OpenReview-style Invitation/Note schema.
+
+Use explicit ProView entities:
+
+CourseOffering
+SubmissionStage
+Project
+Submission
+SubmissionVersion
+ReviewerAssignment
+Review
+Rubric
+Rebuttal
+Grade
+SimilarityCheck
+
+This is important for the Systems Analysis and Design project because the implementation
+should correspond clearly to the domain model and relational database design.
+
+============================================================
+55. OPENREVIEW FRONTEND CLEANUP STRATEGY
+============================================================
+
+Perform the adaptation in controlled stages.
+
+Stage A — Baseline
+- clone upstream;
+- install dependencies;
+- record upstream commit;
+- run tests/build where possible;
+- create adaptation documentation.
+
+Stage B — Shell
+- ProView branding;
+- application navigation;
+- ProView authentication;
+- role-aware layout;
+- remove public conference navigation.
+
+Stage C — Data Layer
+- replace OpenReview authentication/API dependency;
+- implement ProView REST client;
+- establish shared view models.
+
+Stage D — Core Workflow UI
+- courses;
+- groups;
+- submissions;
+- PDF viewer;
+- reviewer assignments;
+- review forms;
+- review presentation;
+- rebuttal;
+- grading.
+
+Stage E — Secondary Workflow UI
+- similarity checks;
+- archive;
+- notifications;
+- admin screens;
+- audit screen.
+
+Stage F — Cleanup
+- remove dead OpenReview routes from normal app build where safe;
+- eliminate accidental calls to OpenReview APIs;
+- eliminate OpenReview-specific terminology;
+- verify branding;
+- verify license notices.
+
+============================================================
+56. NO RUNTIME OPENREVIEW DEPENDENCY
+============================================================
+
+Before completion, search the complete source tree and verify that normal ProView usage
+does not make runtime network calls to:
+
+openreview.net
+api.openreview.net
+api2.openreview.net
+
+An exception is links in attribution/documentation.
+
+The application must run with Internet access disabled once its local dependencies are
+installed and containers/images are available.
+
+All core workflows must use the local ProView backend.
+
+============================================================
+57. TEST THE ADAPTATION
+============================================================
+
+In addition to the tests defined earlier, add frontend/E2E tests proving that:
+
+1. student login does not redirect to OpenReview;
+2. OpenReview account is not required;
+3. course navigation contains no conference-specific workflow;
+4. project submission renders through ProView API data;
+5. review forms save to ProView backend;
+6. reviewer anonymity remains enforced;
+7. instructor identity view works correctly;
+8. rebuttal works;
+9. grading works;
+10. archive works;
+11. no normal workflow contacts OpenReview production APIs.
+
+Use network interception in Playwright where useful to fail a test if an unexpected
+request targets OpenReview production infrastructure.
+
+============================================================
+58. UPSTREAM UPDATE BOUNDARY
+============================================================
+
+Do not attempt to maintain perpetual compatibility with every future OpenReview change.
+
+Record a fixed upstream commit as the project's baseline.
+
+ProView is a derivative application, not a plugin that must follow OpenReview HEAD.
+
+Prefer stable maintainable ProView code over elaborate mechanisms for automatically
+merging future upstream releases.
+
+============================================================
+59. REVISED DEFINITION OF DONE
+============================================================
+
+The frontend portion is complete only when:
+
+- it is recognizably based on the strong review UX of OpenReview;
+- users see ProView terminology and workflows;
+- normal operation does not depend on OpenReview servers;
+- conference-specific functionality is absent from normal product navigation;
+- all data comes from the ProView backend;
+- ProView authentication works independently;
+- OpenReview-derived code retains required licensing information;
+- attribution/upstream documentation exists;
+- production frontend build succeeds;
+- all ProView E2E workflows pass.
+
+The backend definition of done from the previous prompt remains unchanged.
+
+Continue implementing all previous requirements, applying these OpenReview adaptation
+instructions wherever they conflict with the earlier frontend-from-scratch instructions.
