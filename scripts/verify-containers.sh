@@ -68,4 +68,16 @@ compose up -d --wait api
 pnpm exec playwright test --grep '@lifecycle' --output=test-results/lifecycle
 PROVIEW_VERIFY_PRIVATE_STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9000/proview-private/demo/active-group-1-submission-1-v1.pdf)
 [[ "$PROVIEW_VERIFY_PRIVATE_STATUS" == 403 ]]
+# Freeze workers and writes during the recovery comparison; use a new DB/bucket.
+compose stop proxy web api
+export BACKUP_POSTGRES_CONTAINER
+BACKUP_POSTGRES_CONTAINER=$(compose ps -q postgres)
+export STORAGE_DRIVER=s3
+export S3_ENDPOINT=http://127.0.0.1:9000
+export S3_REGION=us-east-1
+export S3_BUCKET=proview-private
+export S3_ACCESS_KEY_ID=proview_storage
+export S3_SECRET_ACCESS_KEY=container_test_storage_password
+export S3_FORCE_PATH_STYLE=true
+pnpm test:backup
 echo 'PASS production API/web/PostgreSQL/Nginx/MinIO containers, S3 PDFs and denied anonymous object access.'

@@ -38,10 +38,14 @@ jobs:
       - run: pnpm db:seed
       - run: pnpm lint && pnpm typecheck && pnpm test
       - run: pnpm build
+      - run: pnpm api:check && pnpm format:check
       - run: pnpm check:offline
       - run: pnpm --filter @proview/api exec node --import tsx prisma/verify-constraints.ts
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:acceptance
+      - run: pnpm test:backup
+        env:
+          BACKUP_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

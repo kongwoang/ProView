@@ -10,12 +10,18 @@ import {
   HttpCode,
   HttpException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOkResponse } from '@nestjs/swagger';
 import type { Request, Response, CookieOptions } from 'express';
 import { Public } from '../../common/public.decorator';
 import { Actor, CurrentActor, publicUser } from '../../common/actor';
 import { AuthService } from './auth.service';
 import { LoginDto, ChangePasswordDto, UpdateProfileDto } from './auth.dto';
+import {
+  AuthSessionDto,
+  SessionUserDto,
+  SuccessDto,
+  PasswordChangedDto,
+} from '../../common/response.dto';
 
 const COOKIE = 'proview_refresh';
 const attempts = new Map<string, { count: number; resetAt: number }>();
@@ -51,11 +57,12 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(200)
+  @ApiOkResponse({ type: AuthSessionDto })
   async login(
     @Body() body: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<AuthSessionDto> {
     this.checkOrigin(req);
     this.limit(req);
     const result = await this.auth.login(body.identifier, body.password, {
@@ -68,7 +75,11 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(200)
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  @ApiOkResponse({ type: AuthSessionDto })
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthSessionDto> {
     this.checkOrigin(req);
     this.limit(req);
     const result = await this.auth.refresh(req.cookies?.[COOKIE] as string | undefined, {
@@ -81,7 +92,11 @@ export class AuthController {
   @Public()
   @Post('logout')
   @HttpCode(200)
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  @ApiOkResponse({ type: SuccessDto })
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SuccessDto> {
     this.checkOrigin(req);
     const result = await this.auth.logout(req.cookies?.[COOKIE] as string | undefined);
     res.clearCookie(COOKIE, { ...this.cookieOptions(), maxAge: undefined });
@@ -94,15 +109,23 @@ export class AuthController {
 @Controller('me')
 export class ProfileController {
   constructor(private readonly auth: AuthService) {}
-  @Get() me(@CurrentActor() actor: Actor) {
+  @Get()
+  @ApiOkResponse({ type: SessionUserDto })
+  me(@CurrentActor() actor: Actor): SessionUserDto {
     return publicUser(actor);
   }
-  @Patch() update(@CurrentActor() actor: Actor, @Body() input: UpdateProfileDto) {
+  @Patch()
+  @ApiOkResponse({ type: SessionUserDto })
+  update(@CurrentActor() actor: Actor, @Body() input: UpdateProfileDto): Promise<SessionUserDto> {
     return this.auth.updateProfile(actor, input);
   }
   @Post('password')
   @HttpCode(200)
-  password(@CurrentActor() actor: Actor, @Body() input: ChangePasswordDto) {
+  @ApiOkResponse({ type: PasswordChangedDto })
+  password(
+    @CurrentActor() actor: Actor,
+    @Body() input: ChangePasswordDto,
+  ): Promise<PasswordChangedDto> {
     return this.auth.changePassword(actor, input.currentPassword, input.newPassword);
   }
 }

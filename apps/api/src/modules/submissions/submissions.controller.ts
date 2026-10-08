@@ -12,7 +12,8 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiTags, ApiBody, ApiConsumes, ApiProduces } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { ApiPdfResponse } from '../../common/pdf-response';
 import type { Response } from 'express';
 import { Actor, CurrentActor } from '../../common/actor';
 import { PageDto } from '../../common/page.dto';
@@ -112,7 +113,7 @@ export class SubmissionsController {
     return this.service.reopen(actor, id, dto);
   }
   @Get('versions/:id/file')
-  @ApiProduces('application/pdf')
+  @ApiPdfResponse()
   async file(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,

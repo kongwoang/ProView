@@ -1,6 +1,8 @@
 # ProView — Task packages cho agent triển khai
 
-Trạng thái 07/10/2026: **mọi task dưới đây đều PLANNED; chưa có implementation hoặc test PASS**. Đây là 23 gói công việc có dependency, có thể chia nhỏ hơn theo các phần a/b đã ghi; không phải 23 agent chạy đồng thời.
+Trạng thái cập nhật 08/10/2026: các gói nghiệp vụ đã tích hợp và có kiểm thử chạy thật. Xem [trạng thái từng gói và phần còn thiếu](implementation-status.md), [bằng chứng kiểm thử](evidence/implementation-verification.md). Danh sách dưới đây giữ acceptance gốc; không tự động đánh dấu DONE cho mọi assertion chưa kiểm chứng.
+
+**Chỉ một agent thực hiện tuần tự**, theo yêu cầu hiện tại của người dùng. Không tiếp tục các subagent cũ. ID là gói công việc, không phải agent đang chạy; handoff chung trong `implementation-status.md` thay các báo cáo module lặp lại. Tài liệu A03 đã có được giữ nguyên để đối chiếu.
 
 Đọc [implementation plan](implementation-plan.md), [domain decisions](domain-decisions.md), [frontend adaptation](frontend-adaptation-plan.md), [requirements matrix](requirements-matrix.md) trước khi bắt đầu.
 
@@ -16,31 +18,31 @@ Trạng thái 07/10/2026: **mọi task dưới đây đều PLANNED; chưa có i
 
 ## Bảng điều phối
 
-| ID | Gói công việc | Dependency bắt buộc để hoàn tất | Gate |
-|---|---|---|---|
-| A00 | Kiến trúc/contract/điều phối | Hai đặc tả | G0; review xuyên suốt |
-| A01 | OpenReview baseline/provenance | A00 phạm vi | G0–G1 |
-| A02 | Workspace, toolchain, Docker, CI nền | A00 | G1 |
-| A03 | Schema, migrations, seed foundation | A00, A02 | G1 |
-| A04 | Auth, session, policy, privacy framework | A03, audit port A13a | G1 |
-| A05 | Course/offering/roster/groups/rubrics | A03, A04, A13a | G2 |
-| A06 | Storage, submission versioning, workflow | A05 | G2 |
-| A07 | Reviewer assignment và COI | A06 | G3 |
-| A08 | Structured review, anonymity, correction | A07 | G3 |
-| A09 | Rebuttal, discussion, review release | A08 | G4 |
-| A10 | Similarity/COOPY thủ công | A06 | G4 |
-| A11 | Grading và evidence workspace | A08, A09, A10 | G4 |
-| A12 | Archive/reference permissions | A11, A05 historical membership | G5 |
-| A13 | Audit, notification, scheduler | A03; a: nền tảng, b: tất cả events | G1/G5 |
-| A14 | Admin APIs, profile/password integration | A04, A13a | G5 |
-| F00 | Web shell, auth/client/adapters | A01, A02, A04; contract A00 | G1 |
-| F01 | Course/project/setup UI | F00, A05 | G2 |
-| F02 | Submission/PDF/assignment/review UI | F00, A06–A08; discussion A09 | G2/G3 |
-| F03 | Rebuttal và grading panels | F02 shell, A09, A11 | G4 |
-| F04 | Dashboards/similarity/archive/notifications/profile | F00 và API tương ứng A05/A07/A10/A12/A13/A14 | G5 |
-| F05 | Admin UI | F00, A14; catalog contract A05 | G5 |
-| Q00 | Test harness, security và E2E theo lát cắt | A00; infrastructure A02/A03 khi chạy | G0–G5 |
-| Q01 | Clean-room acceptance, production local, handoff | Toàn bộ feature đã tích hợp | G6 |
+| ID  | Gói công việc                                       | Dependency bắt buộc để hoàn tất              | Gate                  |
+| --- | --------------------------------------------------- | -------------------------------------------- | --------------------- |
+| A00 | Kiến trúc/contract/điều phối                        | Hai đặc tả                                   | G0; review xuyên suốt |
+| A01 | OpenReview baseline/provenance                      | A00 phạm vi                                  | G0–G1                 |
+| A02 | Workspace, toolchain, Docker, CI nền                | A00                                          | G1                    |
+| A03 | Schema, migrations, seed foundation                 | A00, A02                                     | G1                    |
+| A04 | Auth, session, policy, privacy framework            | A03, audit port A13a                         | G1                    |
+| A05 | Course/offering/roster/groups/rubrics               | A03, A04, A13a                               | G2                    |
+| A06 | Storage, submission versioning, workflow            | A05                                          | G2                    |
+| A07 | Reviewer assignment và COI                          | A06                                          | G3                    |
+| A08 | Structured review, anonymity, correction            | A07                                          | G3                    |
+| A09 | Rebuttal, discussion, review release                | A08                                          | G4                    |
+| A10 | Similarity/COOPY thủ công                           | A06                                          | G4                    |
+| A11 | Grading và evidence workspace                       | A08, A09, A10                                | G4                    |
+| A12 | Archive/reference permissions                       | A11, A05 historical membership               | G5                    |
+| A13 | Audit, notification, scheduler                      | A03; a: nền tảng, b: tất cả events           | G1/G5                 |
+| A14 | Admin APIs, profile/password integration            | A04, A13a                                    | G5                    |
+| F00 | Web shell, auth/client/adapters                     | A01, A02, A04; contract A00                  | G1                    |
+| F01 | Course/project/setup UI                             | F00, A05                                     | G2                    |
+| F02 | Submission/PDF/assignment/review UI                 | F00, A06–A08; discussion A09                 | G2/G3                 |
+| F03 | Rebuttal và grading panels                          | F02 shell, A09, A11                          | G4                    |
+| F04 | Dashboards/similarity/archive/notifications/profile | F00 và API tương ứng A05/A07/A10/A12/A13/A14 | G5                    |
+| F05 | Admin UI                                            | F00, A14; catalog contract A05               | G5                    |
+| Q00 | Test harness, security và E2E theo lát cắt          | A00; infrastructure A02/A03 khi chạy         | G0–G5                 |
+| Q01 | Clean-room acceptance, production local, handoff    | Toàn bộ feature đã tích hợp                  | G6                    |
 
 ## A00 — Kiến trúc, hợp đồng và tích hợp
 

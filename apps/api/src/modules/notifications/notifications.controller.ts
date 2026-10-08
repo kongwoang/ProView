@@ -8,7 +8,8 @@ import {
   NotFoundException,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOkResponse, ApiCreatedResponse } from '@nestjs/swagger';
+import { NotificationPageDto, SuccessDto } from '../../common/response.dto';
 import { Actor, CurrentActor } from '../../common/actor';
 import { PageDto, paging, pageResult } from '../../common/page.dto';
 import { PrismaService } from '../../infrastructure/prisma.service';
@@ -17,7 +18,9 @@ import { PrismaService } from '../../infrastructure/prisma.service';
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly db: PrismaService) {}
-  @Get() async list(@CurrentActor() actor: Actor, @Query() query: PageDto) {
+  @Get()
+  @ApiOkResponse({ type: NotificationPageDto })
+  async list(@CurrentActor() actor: Actor, @Query() query: PageDto): Promise<NotificationPageDto> {
     const where = { recipientId: actor.id };
     const [items, total, unread] = await Promise.all([
       this.db.notification.findMany({
@@ -39,10 +42,12 @@ export class NotificationsController {
     ]);
     return { ...pageResult(items, total, query), unread };
   }
-  @Patch(':id/read') async read(
+  @Patch(':id/read')
+  @ApiOkResponse({ type: SuccessDto })
+  async read(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  ): Promise<SuccessDto> {
     const result = await this.db.notification.updateMany({
       where: { id, recipientId: actor.id, readAt: null },
       data: { readAt: new Date() },
@@ -54,10 +59,17 @@ export class NotificationsController {
       throw new NotFoundException('Notification not found');
     return { success: true };
   }
-  @Post(':id/read') readPost(@CurrentActor() actor: Actor, @Param('id', ParseUUIDPipe) id: string) {
+  @Post(':id/read')
+  @ApiCreatedResponse({ type: SuccessDto })
+  readPost(
+    @CurrentActor() actor: Actor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<SuccessDto> {
     return this.read(actor, id);
   }
-  @Post('read-all') async all(@CurrentActor() actor: Actor) {
+  @Post('read-all')
+  @ApiCreatedResponse({ type: SuccessDto })
+  async all(@CurrentActor() actor: Actor): Promise<SuccessDto> {
     await this.db.notification.updateMany({
       where: { recipientId: actor.id, readAt: null },
       data: { readAt: new Date() },

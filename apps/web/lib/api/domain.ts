@@ -1,4 +1,5 @@
 import type { AllowedAction, ReviewerIdentity, SessionUser } from './contracts';
+import type { components } from './generated';
 
 export interface Course {
   id: string;
@@ -162,12 +163,4 @@ export interface Conflict {
   decisionNote: string | null;
   assignmentId: string;
 }
-export interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  targetUrl: string | null;
-  readAt: string | null;
-  createdAt: string;
-}
+export type Notification = components['schemas']['NotificationDto'];

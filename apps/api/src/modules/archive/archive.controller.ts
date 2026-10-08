@@ -10,6 +10,7 @@ import {
   Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiPdfResponse } from '../../common/pdf-response';
 import type { Response } from 'express';
 import { Actor, CurrentActor } from '../../common/actor';
 import { ArchiveService } from './archive.service';
@@ -46,7 +47,9 @@ export class ArchiveController {
   ) {
     return this.service.revoke(actor, id, input.reason);
   }
-  @Get('publications/:id/file') async file(
+  @Get('publications/:id/file')
+  @ApiPdfResponse()
+  async file(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
     @Headers('range') range: string | undefined,
@@ -59,7 +62,9 @@ export class ArchiveController {
     );
     servePdf(response, file, await this.storage.read(file.storageKey), range);
   }
-  @Get('publications/:id/download') async download(
+  @Get('publications/:id/download')
+  @ApiPdfResponse(false)
+  async download(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
     @Res() response: Response,

@@ -7,6 +7,8 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm api:check
+pnpm format:check
 pnpm check:offline
 pnpm --filter @proview/api exec node --import tsx prisma/verify-constraints.ts
 node scripts/acceptance-courses-submissions.mjs
@@ -31,7 +33,7 @@ Chromium exercises the production frontend against the real API: in-memory sessi
 
 Assignment-engine tests compare deterministic results to an independent exhaustive oracle for small graphs. Scoring tests cover mixed criterion ranges, missing required evidence, endpoints and invalid ranges. Client unit tests cover refresh singleflight, stale-account responses, refresh into a different account without replaying its old mutation, logout races, no-store/token-URL rules and structured409 errors.
 
-See `evidence/implementation-verification.md` for executed checks. The test suite does not establish full browser/assistive-technology compatibility, malicious-PDF scanning, distributed rate-limit behavior, disaster recovery or external-service performance.
+See `evidence/implementation-verification.md` for executed checks. The test suite does not establish full browser/assistive-technology compatibility, malicious-PDF scanning, distributed rate-limit behavior or external-service performance. Automated recovery rehearsals cover snapshot/database/PDF restoration on disposable local/S3 resources; they do not establish recovery on a deployment operator's infrastructure.
 
 Container/S3 verification runs `bash scripts/verify-containers.sh` from a clean checkout without `.env`, with Docker and Chromium installed. It creates a uniquely named disposable Compose project, builds the actual images, migrates/seeds PostgreSQL and private MinIO, runs real HTTP/browser tests through Nginx, denies anonymous object reads and removes only its own test volumes afterward. GitHub's `containers` job runs this independently of native verification.
 
@@ -51,3 +53,5 @@ Container/S3 verification runs `bash scripts/verify-containers.sh` from a clean 
 | E08 Grade         | Author cannot see private draft; publish and verify author feedback                                                 |
 | E09 Archive       | Close offering, approve final report, copy later offering/enroll another student, read authorized PDF               |
 | E10 Authorization | Actual direct file requests from browser contexts reject an unapproved proposal and unrelated private final report  |
+
+OpenAPI generation/drift uses the built API without a database or listening socket. Response schema coverage is reported rather than inferred from route presence. Auth/profile/error/notification types are generated; other domain response shapes remain pending. `pnpm test:backup` runs only on a disposable local/test source with PostgreSQL client/container tools; see [backup and recovery](backup-recovery.md).

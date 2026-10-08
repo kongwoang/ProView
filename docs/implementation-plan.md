@@ -1,8 +1,8 @@
 # ProView — Kế hoạch triển khai cho các agent
 
-Ngày lập: 07/10/2026. Trạng thái: **kế hoạch, chưa triển khai ứng dụng**.
+Ngày lập: 07/10/2026; cập nhật thực thi: 08/10/2026. **Các luồng nghiệp vụ đã được triển khai và kiểm thử tích hợp; nghiệm thu toàn bộ tiêu chí vẫn đang tiếp tục.**
 
-Repository `/Users/kongwoang/data/Project/ProView` trống tại thời điểm khảo sát; chưa có Git, ứng dụng, schema, test hoặc build. Các file được tạo trong lần này chỉ là tài liệu và bản sao hai đặc tả. Không có kết quả build/test nào được xác nhận.
+Repository hiện có frontend OpenReview/Next.js, API NestJS, PostgreSQL, local/S3 storage, Docker và CI. Xem [trạng thái thực thi](implementation-status.md) và [bằng chứng](evidence/implementation-verification.md). Nội dung bên dưới giữ yêu cầu và dependency để đối chiếu, không phải báo cáo tất cả đã PASS.
 
 ## 1. Cách đọc và giao việc
 
@@ -81,25 +81,25 @@ Các package bổ sung chỉ tạo nếu thực sự được sử dụng. Upstr
 
 ## 4. Các quyết định phải khóa trước khi chia tính năng
 
-| Vấn đề | Mặc định đề xuất | Bằng chứng cần có |
-|---|---|---|
-| Quyền theo lớp | Global role xác định khả năng tổng quát; membership trong offering xác định quyền dữ liệu. Instructor lớp A không quản lý lớp B. Admin có quyền quản trị được liệt kê riêng. | Permission matrix + negative API tests. |
-| Trạng thái | `SubmissionStage` là cấu hình; từng `Submission` có state machine riêng. | Bảng actor/from/to/guard/side effects. |
-| Upload và submit | Upload tạo immutable draft version; submit chọn một version cụ thể; không tự submit chỉ vì upload thành công. | Hai upload, một submit, lịch sử và checksum còn nguyên. |
-| Review version | Assignment/review pin version; khi bắt đầu review, không để sinh viên thay version đang xét. Reopen do instructor phải xử lý assignment/evidence cũ theo transaction và giữ lịch sử. | Test revision không làm review cũ đổi nội dung. |
-| Rubric | Không sửa criterion/weight của rubric đã được review/grade dùng; clone cấu hình thành phiên bản mới khi cần. | Review cũ không thay điểm khi cấu hình đổi. |
-| Thành viên nhóm | Cho sửa khi editable; mặc định khóa từ lần submit đầu tiên. Giữ membership history, không xóa bằng chứng sở hữu project cũ. | Unique active group + history archive tests. |
-| Deadline | Lưu UTC; offering có timezone hiển thị; kiểm tra giờ backend trong mỗi mutation. Đúng thời điểm deadline được coi là đã đóng. | Fixed clock: trước/bằng/sau hạn, timezone. |
-| Mở review/rebuttal | Release review theo đợt sau khi đủ review yêu cầu hoặc instructor chủ động đóng vòng có audit; rebuttal cần review đã release và còn hạn. | Review draft/unreleased không bị tác giả xem. |
-| Stage tùy chọn | `allowRebuttal=true` cần `allowReviews=true`; không review thì bỏ qua review/rebuttal; stage mới không cần đổi schema. | Test mọi tổ hợp hợp lệ, reject config không hợp lệ. |
-| Phân công | Hard constraints: no self/shared membership/duplicate/cross-offering. Ưu tiên đủ review và nghiệm không reciprocal nếu khả thi; chỉ chấp nhận reciprocal khi không có nghiệm đủ tránh được, rồi tối ưu workload; tie-break ổn định. | Chạy lặp cùng dữ liệu ra cùng kết quả; báo infeasible. |
-| Tính bất khả thi | Không âm thầm giảm review count hay phá COI. Preview thiếu capacity, lý do và đề xuất operator; apply phải explicit, atomic. Search timeout là chưa kết luận, không phải chứng minh infeasible. | Trường hợp 1–2 nhóm, nhiều COI, k quá lớn. |
-| Sửa review đã submit | Instructor cấp phép correction có lý do; lưu revision/audit, không ghi đè bản đã chốt. | Hai thành viên sửa đồng thời và correction test. |
-| Chấm điểm | Grade draft chỉ instructor được phép; publish gắn đúng version và rubric. Final có similarity bắt buộc chỉ publish khi `COMPLETED`/`WAIVED` đúng version. | Grade draft private; similarity v1 không thỏa final v2. |
-| Công thức điểm | Mặc định criterion normalized theo `[scoreMin, scoreMax]`, weighted average → thang 0–10; tổng weight dương, scoreMax > scoreMin, Decimal. Override overall cần lý do/audit; không tự lấy peer average làm grade. | Boundary, missing criteria, rounding, override tests. |
-| Archive | Own projects theo historical membership. Reference chỉ version được publish, offering đã CLOSED/ARCHIVED, sinh viên thuộc offering sau của cùng Course. | Có cohort cũ/mới; approve/revoke và access-file tests. |
-| CSV roster | Validate + preview errors rồi commit atomic; mặc định chỉ thêm tài khoản đã tồn tại; unknown email báo rõ để Admin tạo. Không phát password qua CSV. | Duplicate row, email lạ, import lặp, wrong role. |
-| Anonymity | Backend xuất DTO theo audience. Alias ổn định trong một submission; không dùng ID thật trong alias. Instructor có membership hợp lệ luôn thấy thật. | JSON/nested/notifications/archive/SSR/RSC/cache/file metadata không lộ. |
+| Vấn đề               | Mặc định đề xuất                                                                                                                                                                                                                    | Bằng chứng cần có                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Quyền theo lớp       | Global role xác định khả năng tổng quát; membership trong offering xác định quyền dữ liệu. Instructor lớp A không quản lý lớp B. Admin có quyền quản trị được liệt kê riêng.                                                        | Permission matrix + negative API tests.                                 |
+| Trạng thái           | `SubmissionStage` là cấu hình; từng `Submission` có state machine riêng.                                                                                                                                                            | Bảng actor/from/to/guard/side effects.                                  |
+| Upload và submit     | Upload tạo immutable draft version; submit chọn một version cụ thể; không tự submit chỉ vì upload thành công.                                                                                                                       | Hai upload, một submit, lịch sử và checksum còn nguyên.                 |
+| Review version       | Assignment/review pin version; khi bắt đầu review, không để sinh viên thay version đang xét. Reopen do instructor phải xử lý assignment/evidence cũ theo transaction và giữ lịch sử.                                                | Test revision không làm review cũ đổi nội dung.                         |
+| Rubric               | Không sửa criterion/weight của rubric đã được review/grade dùng; clone cấu hình thành phiên bản mới khi cần.                                                                                                                        | Review cũ không thay điểm khi cấu hình đổi.                             |
+| Thành viên nhóm      | Cho sửa khi editable; mặc định khóa từ lần submit đầu tiên. Giữ membership history, không xóa bằng chứng sở hữu project cũ.                                                                                                         | Unique active group + history archive tests.                            |
+| Deadline             | Lưu UTC; offering có timezone hiển thị; kiểm tra giờ backend trong mỗi mutation. Đúng thời điểm deadline được coi là đã đóng.                                                                                                       | Fixed clock: trước/bằng/sau hạn, timezone.                              |
+| Mở review/rebuttal   | Release review theo đợt sau khi đủ review yêu cầu hoặc instructor chủ động đóng vòng có audit; rebuttal cần review đã release và còn hạn.                                                                                           | Review draft/unreleased không bị tác giả xem.                           |
+| Stage tùy chọn       | `allowRebuttal=true` cần `allowReviews=true`; không review thì bỏ qua review/rebuttal; stage mới không cần đổi schema.                                                                                                              | Test mọi tổ hợp hợp lệ, reject config không hợp lệ.                     |
+| Phân công            | Hard constraints: no self/shared membership/duplicate/cross-offering. Ưu tiên đủ review và nghiệm không reciprocal nếu khả thi; chỉ chấp nhận reciprocal khi không có nghiệm đủ tránh được, rồi tối ưu workload; tie-break ổn định. | Chạy lặp cùng dữ liệu ra cùng kết quả; báo infeasible.                  |
+| Tính bất khả thi     | Không âm thầm giảm review count hay phá COI. Preview thiếu capacity, lý do và đề xuất operator; apply phải explicit, atomic. Search timeout là chưa kết luận, không phải chứng minh infeasible.                                     | Trường hợp 1–2 nhóm, nhiều COI, k quá lớn.                              |
+| Sửa review đã submit | Instructor cấp phép correction có lý do; lưu revision/audit, không ghi đè bản đã chốt.                                                                                                                                              | Hai thành viên sửa đồng thời và correction test.                        |
+| Chấm điểm            | Grade draft chỉ instructor được phép; publish gắn đúng version và rubric. Final có similarity bắt buộc chỉ publish khi `COMPLETED`/`WAIVED` đúng version.                                                                           | Grade draft private; similarity v1 không thỏa final v2.                 |
+| Công thức điểm       | Mặc định criterion normalized theo `[scoreMin, scoreMax]`, weighted average → thang 0–10; tổng weight dương, scoreMax > scoreMin, Decimal. Override overall cần lý do/audit; không tự lấy peer average làm grade.                   | Boundary, missing criteria, rounding, override tests.                   |
+| Archive              | Own projects theo historical membership. Reference chỉ version được publish, offering đã CLOSED/ARCHIVED, sinh viên thuộc offering sau của cùng Course.                                                                             | Có cohort cũ/mới; approve/revoke và access-file tests.                  |
+| CSV roster           | Validate + preview errors rồi commit atomic; mặc định chỉ thêm tài khoản đã tồn tại; unknown email báo rõ để Admin tạo. Không phát password qua CSV.                                                                                | Duplicate row, email lạ, import lặp, wrong role.                        |
+| Anonymity            | Backend xuất DTO theo audience. Alias ổn định trong một submission; không dùng ID thật trong alias. Instructor có membership hợp lệ luôn thấy thật.                                                                                 | JSON/nested/notifications/archive/SSR/RSC/cache/file metadata không lộ. |
 
 Không dùng các đề xuất trên để tự mở rộng scope sang realtime collaborative editor, automatic plagiarism detection, AI grading, public enrollment hay hệ thống invitation tổng quát.
 
@@ -132,13 +132,13 @@ Không dùng các đề xuất trên để tự mở rộng scope sang realtime 
 
 A00 là agent điều phối/integrator, giữ kiến trúc, contract và quyết định merge. Các ID là **gói công việc**, không phải yêu cầu mở 23 agent cùng lúc.
 
-| Nhóm | Task | Trách nhiệm |
-|---|---|---|
-| Điều phối | A00 | Đặc tả, ADR, API/policy/state contract, review tích hợp. |
-| Nền tảng | A01, A02, A03, A04, A13 | Upstream, workspace, DB, auth, audit/notifications. |
-| Backend nghiệp vụ | A05–A12, A14 | Course đến archive, quản trị tài khoản. |
-| Frontend | F00–F05 | Shell và các feature nối API thật. |
-| Chất lượng | Q00, Q01 | Harness từ đầu; nghiệm thu toàn hệ thống và local production. |
+| Nhóm              | Task                    | Trách nhiệm                                                   |
+| ----------------- | ----------------------- | ------------------------------------------------------------- |
+| Điều phối         | A00                     | Đặc tả, ADR, API/policy/state contract, review tích hợp.      |
+| Nền tảng          | A01, A02, A03, A04, A13 | Upstream, workspace, DB, auth, audit/notifications.           |
+| Backend nghiệp vụ | A05–A12, A14            | Course đến archive, quản trị tài khoản.                       |
+| Frontend          | F00–F05                 | Shell và các feature nối API thật.                            |
+| Chất lượng        | Q00, Q01                | Harness từ đầu; nghiệm thu toàn hệ thống và local production. |
 
 Quy tắc ownership:
 
@@ -150,7 +150,7 @@ Quy tắc ownership:
 6. Không agent nào sửa folder của agent khác nếu chưa phối hợp. Nếu nhiều task chung module, dùng patch request hoặc handoff tuần tự.
 7. Mỗi gói chỉ được nhận trạng thái DONE khi đã tích hợp với dependency thật và có log kiểm thử. Fixture/mock được dùng trong unit test; core flow chạy thật với PostgreSQL và storage.
 
-Trong môi trường hiện tại, chạy **1 integrator + tối đa 3 worker**. Worker có thể nhận gói tiếp theo sau khi hoàn tất gói cũ; không mở một chat riêng cho từng module trừ khi người dùng yêu cầu.
+Theo yêu cầu mới nhất của người dùng, chỉ chạy **một agent**, thực hiện các gói tuần tự. Các ID và ownership dùng để tổ chức scope; không tạo hoặc tiếp tục subagent. Lịch dependency bên dưới được giữ để chọn thứ tự công việc, không phải chỉ thị chạy song song.
 
 ## 7. Dependency graph và lịch triển khai
 
@@ -177,19 +177,19 @@ All backend + frontend ─ Q01: full acceptance/local production ─────
 
 A11 chỉ được hoàn tất khi đã tích hợp evidence từ A08–A10. Có thể triển khai phép tính và draft grade sớm theo contract, nhưng chưa đánh dấu DONE. Tương tự F02/F04 và A13 có phần nền tảng và phần tích hợp cuối; tách ticket con nếu cần.
 
-| Đợt | Công việc có thể chạy song song | Điều kiện kết thúc |
-|---|---|---|
-| 0 | A00 điều phối; workers A01, A02, Q00 thiết kế test | G0: chốt scope, ADR, upstream provenance, contract sơ bộ. |
-| 1 | A03; Q00 harness sau A02; F00 khảo sát shell sau A01 | Schema/constraints và fixture convention ổn định. |
-| 2 | A04; A13a; F00 shell theo contract | Backend auth/policy và audit nền sẵn để tích hợp shell. |
-| 3 | A05; A14; F00 hoàn thiện auth/API | G1: shell auth/API thật; course/rubric/group và admin APIs có test quyền. |
-| 4 | A06; F01; F05 | Setup UI và submission APIs có acceptance; submission UI tiếp tục đợt 5. |
-| 5 | A07; A10; F02a submission/PDF | G2: setup → upload v1/v2/submit qua UI thật; assignment/similarity API sẵn. |
-| 6 | A08; F04a phần dependency đã sẵn; Q00 security review | Review APIs và privacy backend pass; hoàn thiện UI review ở đợt 7. |
-| 7 | A09; A11 phần grade độc lập; F02b review | G3: review/COI/anonymity API + UI; rebuttal/discussion xong, A11 tích hợp sau A09. |
-| 8 | A12 sau A11; F03; F04a phần còn lại | G4: final report → manual COOPY → publish grade. |
-| 9 | F04b archive; A13b; Q00 full regression | G5: archive/cohort mới, dashboards, admin, notification. |
-| 10 | Q01 với integrator; workers sửa lỗi có owner rõ | G6: clean-room setup, production local, offline, all checks pass. |
+| Đợt | Công việc có thể chạy song song                       | Điều kiện kết thúc                                                                 |
+| --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| 0   | A00 điều phối; workers A01, A02, Q00 thiết kế test    | G0: chốt scope, ADR, upstream provenance, contract sơ bộ.                          |
+| 1   | A03; Q00 harness sau A02; F00 khảo sát shell sau A01  | Schema/constraints và fixture convention ổn định.                                  |
+| 2   | A04; A13a; F00 shell theo contract                    | Backend auth/policy và audit nền sẵn để tích hợp shell.                            |
+| 3   | A05; A14; F00 hoàn thiện auth/API                     | G1: shell auth/API thật; course/rubric/group và admin APIs có test quyền.          |
+| 4   | A06; F01; F05                                         | Setup UI và submission APIs có acceptance; submission UI tiếp tục đợt 5.           |
+| 5   | A07; A10; F02a submission/PDF                         | G2: setup → upload v1/v2/submit qua UI thật; assignment/similarity API sẵn.        |
+| 6   | A08; F04a phần dependency đã sẵn; Q00 security review | Review APIs và privacy backend pass; hoàn thiện UI review ở đợt 7.                 |
+| 7   | A09; A11 phần grade độc lập; F02b review              | G3: review/COI/anonymity API + UI; rebuttal/discussion xong, A11 tích hợp sau A09. |
+| 8   | A12 sau A11; F03; F04a phần còn lại                   | G4: final report → manual COOPY → publish grade.                                   |
+| 9   | F04b archive; A13b; Q00 full regression               | G5: archive/cohort mới, dashboards, admin, notification.                           |
+| 10  | Q01 với integrator; workers sửa lỗi có owner rõ       | G6: clean-room setup, production local, offline, all checks pass.                  |
 
 Đây là thứ tự theo dependency, không phải ước lượng ngày hoàn thành. Nếu gate chưa đạt, sửa nguyên nhân trong gói hiện tại; không đổi definition of done hoặc mock nghiệp vụ để tiến tiếp.
 

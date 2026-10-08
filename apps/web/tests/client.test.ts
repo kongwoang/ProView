@@ -123,3 +123,25 @@ test('conflicts retain structured errors for the form to handle', async () => {
       error instanceof ApiError && error.status === 409 && error.details.requestId === 'request-1',
   );
 });
+
+test('validation errors retain the actual array of field messages', async () => {
+  const client = new ApiClient((async () =>
+    json(
+      {
+        code: 'HTTP_400',
+        message: 'Request validation failed',
+        fieldErrors: ['property role should not exist'],
+        requestId: 'validation-1',
+      },
+      400,
+    )) as typeof fetch);
+  await assert.rejects(
+    client.request('/me', { method: 'PATCH', body: JSON.stringify({ role: 'ADMIN' }) }),
+    (error: unknown) => {
+      assert.ok(error instanceof ApiError);
+      assert.deepEqual(error.details.fieldErrors, ['property role should not exist']);
+      assert.equal(error.details.requestId, 'validation-1');
+      return true;
+    },
+  );
+});

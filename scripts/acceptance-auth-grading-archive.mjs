@@ -39,6 +39,24 @@ const instructor = (await login('instructor')).data;
 const student = (await login('student7')).data;
 const laterStudent = (await login('student8')).data;
 const outsider = (await login('student9')).data;
+for (const session of [admin, instructor, student, laterStudent, outsider]) {
+  assert.deepEqual(Object.keys(session).sort(), ['accessToken', 'user']);
+  assert.deepEqual(Object.keys(session.user).sort(), [
+    'displayName',
+    'email',
+    'id',
+    'role',
+    'username',
+  ]);
+  assert.equal(typeof session.accessToken, 'string');
+  const profile = await api('/me', session);
+  assert.deepEqual(profile, session.user);
+  assertions += 4;
+}
+const invalidProfile = await api('/me', student, 'PATCH', { role: 'ADMIN' }, 400);
+assert.ok(Array.isArray(invalidProfile.fieldErrors));
+assert.equal(typeof invalidProfile.requestId, 'string');
+assertions += 2;
 await api('/users', student, 'GET', undefined, 403);
 await api('/audit-logs', instructor, 'GET', undefined, 403);
 await api('/archive/manage', student, 'GET', undefined, 403);

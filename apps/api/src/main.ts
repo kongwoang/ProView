@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -10,6 +10,7 @@ import { writeFile } from 'node:fs/promises';
 import type { NextFunction, Request, Response } from 'express';
 import { loadEnvironment } from './infrastructure/environment';
 import { HttpExceptionFilter } from './infrastructure/http-exception.filter';
+import { createApiDocument } from './common/openapi';
 
 async function bootstrap(): Promise<void> {
   const environment = loadEnvironment();
@@ -56,10 +57,7 @@ async function bootstrap(): Promise<void> {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();
-  const document = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder().setTitle('ProView API').setVersion('1.0').addBearerAuth().build(),
-  );
+  const document = createApiDocument(app);
   if (process.env.OPENAPI_OUTPUT)
     await writeFile(process.env.OPENAPI_OUTPUT, JSON.stringify(document, null, 2));
   if (environment.ENABLE_API_DOCS) SwaggerModule.setup('api/docs', app, document);

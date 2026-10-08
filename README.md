@@ -27,6 +27,8 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm api:check
+pnpm format:check
 pnpm start
 ```
 
@@ -40,9 +42,9 @@ See [testing](docs/testing.md) for PostgreSQL, HTTP and Chromium commands; [veri
 
 - [Architecture](docs/architecture.md), [database](docs/database.md), [domain model](docs/domain-model.md).
 - [Workflow](docs/workflow.md), [authorization](docs/authorization.md), [API guide](docs/api.md).
-- [Deployment checklist](docs/deployment-checklist.md), [brand assets and typography](docs/branding.md).
+- [Deployment checklist](docs/deployment-checklist.md), [backup and recovery](docs/backup-recovery.md), [brand assets and typography](docs/branding.md).
 - [OpenReview provenance](docs/upstream-openreview.md), [adaptation](docs/openreview-adaptation.md) and retained [license](apps/web/LICENSE.md).
 - [Implementation plan](docs/implementation-plan.md), [agent tasks](docs/agent-tasks.md), [domain decisions](docs/domain-decisions.md), [requirements matrix](docs/requirements-matrix.md).
 - Original [specification](docs/specifications/01-proview-original.txt) and [frontend override](docs/specifications/02-openreview-override.txt).
 
-Docker Compose includes PostgreSQL, private MinIO, API, web and Nginx. External hosting is outside the current scope. Production containers and private S3 storage pass the disposable GitHub Actions verification; see the exact run in the evidence document. Deployment-specific credentials, TLS, backup/restore and load checks remain required before an external release.
+Docker Compose includes PostgreSQL, private MinIO, API, web and Nginx. External hosting is outside the current scope. See the evidence document for actual CI results. Automated recovery rehearsals cover local and S3 storage; production backup scheduling/retention, recovery on the selected infrastructure, TLS and representative load checks remain operator work before an external release. [Current implementation status](docs/implementation-status.md) records remaining plan items.

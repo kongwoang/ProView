@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiPdfResponse } from '../../common/pdf-response';
 import type { Response } from 'express';
 import { Actor, CurrentActor } from '../../common/actor';
 import { SimilarityService } from './similarity.service';
@@ -125,7 +126,9 @@ export class SimilarityController {
       throw error;
     }
   }
-  @Get(':id/result-files/:fileId/file') async file(
+  @Get(':id/result-files/:fileId/file')
+  @ApiPdfResponse()
+  async file(
     @CurrentActor() actor: Actor,
     @Param('id', ParseUUIDPipe) id: string,
     @Param('fileId', ParseUUIDPipe) fileId: string,

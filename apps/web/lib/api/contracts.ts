@@ -1,25 +1,13 @@
 /** Public transport shapes only. Never import database entities into the web app. */
-export type Role = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN';
+import type { components } from './generated';
 
-export interface SessionUser {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string;
-  role: Role;
-}
-
-export interface AuthSession {
-  accessToken: string;
-  user: SessionUser;
-}
-
-export interface ApiErrorEnvelope {
-  code: string;
-  message: string;
-  fieldErrors?: Record<string, string[]>;
+export type SessionUser = components['schemas']['SessionUserDto'];
+export type Role = SessionUser['role'];
+export type AuthSession = components['schemas']['AuthSessionDto'];
+// Locally synthesized network/session errors do not have a server request id.
+export type ApiErrorEnvelope = Omit<components['schemas']['ApiErrorDto'], 'requestId'> & {
   requestId?: string;
-}
+};
 
 export interface PageResult<T> {
   items: T[];
