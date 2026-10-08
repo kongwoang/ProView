@@ -34,7 +34,7 @@ All paths below refer to the pinned commit. Every adapted leaf component include
 | `components/Note.js`, `components/forum/ForumNote.js` | Submission/review feature presentation    | Use submission title/identity/status metadata, explicit versions and threaded evidence layout; replace generic Note/Invitation orchestration      |
 | `LICENSE.md`                                          | `apps/web/LICENSE.md`                     | Unmodified                                                                                                                                        |
 
-Paths in the destination column are relative to `apps/web` except where shown in full. No OpenReview images, fonts, logos, templates or third-party imported media are retained. ProView branding uses the user-supplied original icon and self-hosted Montserrat wordmark; the interface body uses system fonts. See [brand provenance](branding.md).
+Paths in the destination column are relative to `apps/web` except where shown in full. No OpenReview images, fonts, logos, templates or third-party imported media are retained. ProView branding uses the user-supplied original icon and self-hosted Montserrat wordmark; the interface body uses independently sourced, self-hosted Noto Sans, with system fallbacks. See [brand provenance](branding.md).
 
 ## Replaced and removed
 
@@ -49,3 +49,5 @@ Original automation/deployment files, `.mcp.json`, editor settings and unrelated
 ## Verification
 
 See [baseline evidence](evidence/upstream-baseline.md). Baseline failures are recorded separately from ProView checks; they are not presented as successful checks.
+
+The 2026-10-08 visual refinement follows the actual pinned OpenReview `app/layout.js`, `styles/utils/_constants.scss`, `styles/global.scss`, login styles and footer structure. `components/workspace-footer.tsx` records its footer adaptation. Noto Sans comes from Google Fonts under SIL OFL; checksummed original and derived assets are documented in [branding](branding.md). This is presentation reuse; the OpenReview auth/data provider graph remains absent.

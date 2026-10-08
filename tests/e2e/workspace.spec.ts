@@ -9,7 +9,7 @@ async function login(page: Page, identifier: string) {
   await page.goto('/login');
   await page.getByLabel('Email or username').fill(identifier);
   await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Login to ProView' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
 }
@@ -33,7 +33,7 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   });
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Login', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'New to ProView?', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New user?', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign Up', exact: true })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/login-desktop.png', fullPage: true });
   await login(page, 'student1');
@@ -46,6 +46,42 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   expect(await page.evaluate(() => document.fonts.check('800 25px "ProView Montserrat"'))).toBe(
     true,
   );
+  expect(await page.evaluate(() => document.fonts.check('400 14px "ProView Noto Sans"'))).toBe(
+    true,
+  );
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/offerings?') &&
+      response.url().includes('search=IT3120E'),
+  );
+  await page
+    .getByRole('search', { name: 'Course search', exact: true })
+    .getByRole('searchbox')
+    .fill('IT3120E');
+  await page
+    .getByRole('search', { name: 'Course search', exact: true })
+    .getByRole('button', { name: 'Search', exact: true })
+    .click();
+  const searched = await searchResponse;
+  expect(searched.ok()).toBe(true);
+  expect((await searched.json()).items.length).toBeGreaterThan(0);
+  await expect(page).toHaveURL(/\/courses\?search=IT3120E$/);
+  await expect(page.getByLabel('Search courses', { exact: true })).toHaveValue('IT3120E');
+  // Repeating the same header query must restore it after the local filter changes.
+  await page.getByLabel('Search courses', { exact: true }).fill('no-such-course-proview-search');
+  await page
+    .getByRole('search', { name: 'Course search', exact: true })
+    .getByRole('searchbox')
+    .fill('IT3120E');
+  await page
+    .getByRole('search', { name: 'Course search', exact: true })
+    .getByRole('button', { name: 'Search', exact: true })
+    .click();
+  await expect(page.getByLabel('Search courses', { exact: true })).toHaveValue('IT3120E');
+
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   const brand = page.locator('.site-header .proview-brand');
   expect(await brand.locator('img').evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(
     1254,
@@ -138,6 +174,19 @@ test('instructor and administrator pages resolve real data', async ({ page }) =>
   for (const href of ['/grading', '/similarity-checks', '/reviews', '/courses']) {
     await expect(page.locator(`main a[href="${href}"]`)).toHaveCount(0);
   }
+  await page
+    .getByRole('search', { name: 'User account search', exact: true })
+    .getByRole('searchbox')
+    .fill('administrator');
+  await page
+    .getByRole('search', { name: 'User account search', exact: true })
+    .getByRole('button', { name: 'Search', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/admin\/users\?search=administrator$/);
+  await expect(page.getByLabel('Search users', { exact: true })).toHaveValue('administrator');
+  await expect(page.locator('tbody')).toContainText('Demo Administrator');
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'Administration', exact: true })).toBeVisible();
   await page.screenshot({ path: 'test-results/admin-desktop.png', fullPage: true });
   await page
     .getByRole('navigation', { name: 'Main navigation' })

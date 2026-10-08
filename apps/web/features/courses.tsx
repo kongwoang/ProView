@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useSession } from '@/providers/session-provider';
 import type { PageResult } from '@/lib/api/contracts';
 import type { Course, Offering, Member, Group, Stage, RubricRevision } from '@/lib/api/domain';
@@ -24,7 +25,12 @@ import {
 export function CoursesPage() {
   const { user, api } = useSession();
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const searchFromUrl = useSearchParams().get('search') ?? '';
+  const [search, setSearch] = useState(searchFromUrl);
+  useEffect(() => {
+    setSearch(searchFromUrl);
+    setPage(1);
+  }, [searchFromUrl]);
   const [create, setCreate] = useState(false);
   const [copySearch, setCopySearch] = useState('');
   const copySources = useResource<PageResult<Offering>>(
@@ -182,13 +188,13 @@ export function CoursesPage() {
               <div className="cards-grid">
                 {data.items.map((offering) => (
                   <article className="project-card" key={offering.id}>
+                    <h3>
+                      <Link href={`/offerings/${offering.id}`}>{offering.course.title}</Link>
+                    </h3>
                     <div className="section-heading">
                       <span className="eyebrow">{offering.course.code}</span>
                       <StatusBadge status={offering.status} />
                     </div>
-                    <h3>
-                      <Link href={`/offerings/${offering.id}`}>{offering.course.title}</Link>
-                    </h3>
                     <p className="meta">
                       {offering.semester} · {offering.academicYear}
                     </p>

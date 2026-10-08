@@ -44,3 +44,5 @@ Kết quả chạy thực và CI đã xác minh nằm ở [implementation-verifi
 ## UI adjustment requested on 2026-10-08
 
 The frontend now follows familiar OpenReview presentation: top navigation, centered content, flat lists, bordered tabs and plain forms, while preserving the supplied ProView logo/font and all domain workflows. The login explains administrator-created access; the admin overview shows management tools. See [adaptation decisions](openreview-adaptation.md) and [verification evidence](evidence/implementation-verification.md). This presentation change does not close the remaining response-schema and AD/S assertion-level evidence work above.
+
+Follow-up UI clarification: preserve ProView navy/blue/purple while matching OpenReview's actual Noto Sans, spacing, title-first lists, square inputs, compact count links and two-tier footer. The authenticated header uses real course/user search, verified against the API. All seven native browser checks pass after the320px footer fix. Inspection of any user-provided OpenReview session is read-only.

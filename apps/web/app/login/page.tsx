@@ -7,6 +7,7 @@ import { useSession } from '@/providers/session-provider';
 import SpinnerButton from '@/components/upstream/SpinnerButton';
 import { ErrorState, Field } from '@/components/ui';
 import { ProViewBrand } from '@/components/proview-brand';
+import { WorkspaceFooter } from '@/components/workspace-footer';
 
 export default function LoginPage() {
   const { user, loading, login } = useSession();
@@ -39,11 +40,15 @@ export default function LoginPage() {
           <Link className="brand" href="/" aria-label="ProView home">
             <ProViewBrand />
           </Link>
-          <span className="muted">Course projects and peer review</span>
+          <Link className="header-login" href="/login" aria-current="page">
+            Login
+          </Link>
         </div>
         <div className="navigation-bar">
           <div className="navigation-inner">
-            <span className="login-context">Sign in to your academic workspace</span>
+            <span className="login-context">
+              Course Projects. Peer Review. Author Responses. Evaluation. Academic History.
+            </span>
           </div>
         </div>
       </header>
@@ -57,7 +62,6 @@ export default function LoginPage() {
                 name="identifier"
                 autoComplete="username"
                 required
-                autoFocus
                 disabled={pending}
                 placeholder="Your email or username"
               />
@@ -74,26 +78,19 @@ export default function LoginPage() {
             </Field>
             <div className="button-row">
               <SpinnerButton type="submit" loading={pending} disabled={loading || !!user}>
-                Sign in
+                Login to ProView
               </SpinnerButton>
             </div>
           </form>
           <p className="login-help">Need a password reset? Contact your course administrator.</p>
         </section>
         <section className="login-access" aria-labelledby="access-heading">
-          <h2 id="access-heading">New to ProView?</h2>
-          <p>Your administrator creates your account and your instructor adds you to a course.</p>
-          <p>
-            Once signed in, you can find your project group, submit PDF versions, review assigned
-            projects and respond to feedback.
-          </p>
-          <p className="muted">Contact your course administrator if you need access.</p>
+          <h2 id="access-heading">New user?</h2>
+          <p>Contact your course administrator to request an account.</p>
+          <p className="muted">Your instructor will enroll you in a course and project group.</p>
         </section>
       </main>
-      <footer className="workspace-footer">
-        <span>ProView · Course projects and peer review</span>
-        <Link href="/source">Source &amp; acknowledgments</Link>
-      </footer>
+      <WorkspaceFooter />
     </div>
   );
 }

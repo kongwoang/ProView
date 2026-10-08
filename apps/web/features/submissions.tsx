@@ -36,13 +36,13 @@ export function ProjectsPage() {
             <div className="cards-grid">
               {itemsOf(data).map((project) => (
                 <article className="project-card" key={project.id}>
-                  <p className="eyebrow">
-                    {project.offering.course.code} · {project.offering.semester}
-                  </p>
                   <h3>
                     <Link href={`/projects/${project.id}`}>{project.title}</Link>
                   </h3>
                   <p className="meta">{project.group.name}</p>
+                  <p className="eyebrow">
+                    {project.offering.course.code} · {project.offering.semester}
+                  </p>
                   <p className="muted small">{project.description}</p>
                   <footer>
                     <span className="muted small">

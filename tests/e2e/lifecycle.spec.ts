@@ -27,7 +27,7 @@ async function actor(browser: Browser, username: string, origin: string) {
   await page.getByLabel('Email or username').fill(username);
   await page.getByLabel('Password', { exact: true }).fill('ProViewDemo!2026');
   const session = await action(page, '/auth/login', 'POST', () =>
-    page.getByRole('button', { name: 'Sign in', exact: true }).click(),
+    page.getByRole('button', { name: 'Login to ProView', exact: true }).click(),
   );
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   return { page, context, token: session.accessToken as string };

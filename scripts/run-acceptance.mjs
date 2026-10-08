@@ -125,7 +125,20 @@ async function browserChecks(args) {
   }
 }
 await withApi('browser', () =>
-  browserChecks(['--grep-invert', '@lifecycle', '--output=test-results/focused']),
+  browserChecks([
+    '--grep-invert',
+    '@lifecycle|instructor saves and publishes a grade',
+    '--output=test-results/focused',
+  ]),
+);
+// Browser scenarios share the same client IP. Start grading with a fresh API
+// process so accumulated login/refresh requests do not exhaust the real limiter.
+await withApi('browser', () =>
+  browserChecks([
+    '--grep',
+    'instructor saves and publishes a grade',
+    '--output=test-results/focused-grading',
+  ]),
 );
 await withApi('browser', () =>
   browserChecks(['--grep', '@lifecycle', '--output=test-results/lifecycle']),

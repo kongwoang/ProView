@@ -5,11 +5,11 @@ export default function SourcePage() {
     <main className="legal-page">
       <Link href="/dashboard">← Back to workspace</Link>
       <h1>Source &amp; acknowledgments</h1>
-      <p>
+      <p id="upstream">
         ProView is a course-project review workspace. Its frontend is derived from the official
         OpenReview Web application.
       </p>
-      <p>
+      <p id="license">
         Copyright © 2019–2026 OpenReview. The frontend is available under the GNU Affero General
         Public License, version 3 or later.
       </p>
@@ -29,7 +29,9 @@ export default function SourcePage() {
       </p>
       <p>
         The ProView logo and wordmark follow the project team’s branding. Montserrat is used under
-        the <a href="/brand/Montserrat-OFL.txt">SIL Open Font License, version 1.1</a>.
+        the <a href="/brand/Montserrat-OFL.txt">SIL Open Font License, version 1.1</a>. The
+        interface uses self-hosted Noto Sans under the{' '}
+        <a href="/fonts/NotoSans-OFL.txt">same license</a>.
       </p>
     </main>
   );

@@ -131,11 +131,8 @@ export function DashboardPage() {
                   href={stat.href}
                   key={stat.label}
                 >
-                  <p className="stat-label">{stat.label}</p>
-                  <div className="stat-value">{stat.value ?? 0}</div>
-                  <p className="stat-note">
-                    {stat.note} <span aria-hidden="true">↗</span>
-                  </p>
+                  <span className="stat-value">{stat.value ?? 0}</span>
+                  <span className="stat-label">{stat.label}</span>
                 </Link>
               ))}
             </div>
@@ -182,19 +179,15 @@ export function DashboardPage() {
                     {student ? (
                       data.projects.length ? (
                         data.projects.slice(0, 5).map((project) => (
-                          <article
-                            className="project-card"
-                            style={{ marginBottom: 12 }}
-                            key={project.id}
-                          >
-                            <p className="eyebrow">
-                              {project.offering.course.code} · {project.offering.semester}
-                            </p>
+                          <article className="project-card" key={project.id}>
                             <h3>
                               <Link href={`/projects/${project.id}`}>{project.title}</Link>
                             </h3>
+                            <p className="meta">{project.group.name}</p>
+                            <p className="eyebrow">
+                              {project.offering.course.code} · {project.offering.semester}
+                            </p>
                             <footer>
-                              <span className="muted small">{project.group.name}</span>
                               <Link className="link-arrow" href={`/projects/${project.id}`}>
                                 Open project →
                               </Link>

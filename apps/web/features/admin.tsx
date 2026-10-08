@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useSession } from '@/providers/session-provider';
 import type { PageResult, SessionUser } from '@/lib/api/contracts';
 import type { Course } from '@/lib/api/domain';
@@ -19,7 +20,12 @@ export function AdminUsersPage() {
   const { api } = useSession();
   const action = useAction();
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const searchFromUrl = useSearchParams().get('search') ?? '';
+  const [search, setSearch] = useState(searchFromUrl);
+  useEffect(() => {
+    setSearch(searchFromUrl);
+    setPage(1);
+  }, [searchFromUrl]);
   const [edit, setEdit] = useState<ManagedUser | 'new' | null>(null);
   const [reset, setReset] = useState<ManagedUser | null>(null);
   const query = useResource<PageResult<ManagedUser>>(

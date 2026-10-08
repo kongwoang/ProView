@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useSession } from '@/providers/session-provider';
 import type { Role } from '@/lib/api/contracts';
 import LoadingSpinner from './upstream/LoadingSpinner';
 import { ErrorState } from './ui';
 import { ProViewBrand } from './proview-brand';
+import { WorkspaceFooter } from './workspace-footer';
 
 const navigation: { label: string; href: string; roles?: Role[] }[] = [
   { label: 'Overview', href: '/dashboard' },
@@ -26,6 +27,7 @@ const navigation: { label: string; href: string; roles?: Role[] }[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useSession();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [logoutError, setLogoutError] = useState<unknown>(null);
@@ -73,6 +75,41 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link className="brand" href="/dashboard" aria-label="ProView overview">
             <ProViewBrand />
           </Link>
+          <form
+            className="header-search"
+            role="search"
+            aria-label={user.role === 'ADMIN' ? 'User account search' : 'Course search'}
+            action={user.role === 'ADMIN' ? '/admin/users' : '/courses'}
+            method="get"
+          >
+            <input
+              key={`${pathname}:${searchParams.get('search') ?? ''}`}
+              name="search"
+              type="search"
+              aria-label={
+                user.role === 'ADMIN' ? 'Search user accounts' : 'Search courses and offerings'
+              }
+              placeholder={
+                user.role === 'ADMIN' ? 'Search user accounts…' : 'Search courses and offerings…'
+              }
+              defaultValue={searchParams.get('search') ?? ''}
+              maxLength={200}
+            />
+            <button type="submit" aria-label="Search">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <circle cx="10" cy="10" r="6" />
+                <path d="m15 15 6 6" />
+              </svg>
+            </button>
+          </form>
           <div className="topbar-actions">
             <Link className="notification-link" href="/notifications">
               Notifications
@@ -138,10 +175,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             children
           )}
         </main>
-        <footer className="workspace-footer">
-          <span>ProView · Course projects and peer review</span>
-          <Link href="/source">Source &amp; acknowledgments</Link>
-        </footer>
+        <WorkspaceFooter authenticated />
       </div>
     </div>
   );
