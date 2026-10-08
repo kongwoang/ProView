@@ -22,7 +22,6 @@ export function NotificationsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="STAY IN THE LOOP"
         title="Notifications"
         description="Updates from your projects, reviews, and courses."
         actions={

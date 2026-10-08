@@ -71,7 +71,6 @@ export function CoursesPage() {
   return (
     <>
       <PageHeader
-        eyebrow="LEARNING, ONE PROJECT AT A TIME"
         title="Your courses"
         description="Course spaces, project teams, and milestones in one place."
         actions={

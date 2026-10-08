@@ -75,7 +75,6 @@ export function ReviewsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="THOUGHTFUL FEEDBACK MAKES A DIFFERENCE"
         title="Your reviews"
         description="Read the assigned version, use the rubric, and share constructive feedback."
       />

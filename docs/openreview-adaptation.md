@@ -34,7 +34,11 @@ Pages are registered only when implemented. Unregistered routes return 404. Form
 
 ## Styling
 
-Navy `#0D1B3D`, blue `#1565E8` and purple `#584AF7` form the theme. The academic-review layout prioritizes submission context, version history, reviews and evidence. System fonts render offline. An Ant Design/Bootstrap runtime is not required by the selected reused leaf components.
+The user requested a more familiar OpenReview interface on 2026-10-08. The shell now uses a compact top header and horizontal role navigation above a centered content column, replacing the fixed sidebar. Course/project/archive results are flat lists with linked titles and metadata; submission tabs, review replies, tables and forms use simple borders and restrained spacing. The login page follows OpenReview's two-column form/access-help arrangement, with administrator-created accounts instead of public signup. No global search is shown without a corresponding authorized backend feature.
+
+The original ProView icon, Montserrat ExtraBold wordmark and navy/blue/purple colors remain. Helvetica/Arial system fonts render the body offline. The navigation adapts to a collapsible in-flow menu on mobile, without hiding notifications/profile/sign out. Administration uses its own dashboard tools; academic workflows retain groups, rubric revisions, exact PDF versions, anonymous reviews, COOPY, published grades and controlled archives. Presentation similarity does not reintroduce OpenReview's Note/Invitation/auth model or external runtime dependencies.
+
+Reference: official [OpenReview login](https://openreview.net/login) and [conference list](https://openreview.net/group?id=ICLR.cc/2026/Conference), visually inspected on 2026-10-08; the pinned upstream styles remain recoverable from import commit `0843010`. No Ant Design/Bootstrap runtime or new UI dependency is required.
 
 ## Verification boundaries
 

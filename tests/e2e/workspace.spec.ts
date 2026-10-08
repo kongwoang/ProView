@@ -11,7 +11,7 @@ async function login(page: Page, identifier: string) {
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: /Hello,/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
 }
 test('student session refresh, role boundaries, PDF and no external runtime requests', async ({
   page,
@@ -31,12 +31,22 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
     }
     return route.continue();
   });
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { name: 'Login', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'New to ProView?', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign Up', exact: true })).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/login-desktop.png', fullPage: true });
   await login(page, 'student1');
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Main navigation' })
+      .getByRole('link', { name: 'Overview', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => document.fonts.check('800 25px "ProView Montserrat"'))).toBe(
     true,
   );
-  const brand = page.locator('.sidebar .proview-brand');
+  const brand = page.locator('.site-header .proview-brand');
   expect(await brand.locator('img').evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(
     1254,
   );
@@ -47,7 +57,7 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   const cookies = await context.cookies();
   expect(cookies.find((cookie) => cookie.name === 'proview_refresh')?.httpOnly).toBe(true);
   await page.reload();
-  await expect(page.getByRole('heading', { name: /Hello,/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   await page.goto('/admin/users');
   await expect(
     page.getByRole('heading', { name: 'This area requires staff access.' }),
@@ -57,6 +67,7 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   await page.goto(`/submissions/${demoId('active-group-1-submission-1')}`);
   await expect(page.getByRole('tab', { name: /Document/ })).toBeVisible();
   await expect(page.locator('.pdf-viewer')).toBeVisible();
+  await page.screenshot({ path: 'test-results/submission-desktop.png', fullPage: true });
   await page.goto('/profile');
   await expect(
     page.getByRole('heading', { name: 'Your academic history', exact: true }),
@@ -123,6 +134,11 @@ test('instructor and administrator pages resolve real data', async ({ page }) =>
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await login(page, 'admin');
+  await expect(page.getByRole('heading', { name: 'Administration', exact: true })).toBeVisible();
+  for (const href of ['/grading', '/similarity-checks', '/reviews', '/courses']) {
+    await expect(page.locator(`main a[href="${href}"]`)).toHaveCount(0);
+  }
+  await page.screenshot({ path: 'test-results/admin-desktop.png', fullPage: true });
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .locator('a[href="/admin/users"]')
@@ -194,7 +210,14 @@ test('peer reviewer saves a collaborative rubric draft through the UI', async ({
 });
 test('mobile navigation remains usable without horizontal page overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { name: 'Login', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: 'test-results/login-mobile.png', fullPage: true });
   await login(page, 'student2');
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden();
   await page.getByRole('button', { name: 'Toggle navigation' }).click();
   await page
     .getByRole('navigation', { name: 'Main navigation' })
@@ -204,12 +227,23 @@ test('mobile navigation remains usable without horizontal page overflow', async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  await expect
-    .poll(() =>
-      page.locator('.sidebar').evaluate((element) => element.getBoundingClientRect().right),
-    )
-    .toBeLessThanOrEqual(0);
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Toggle navigation' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
   await page.screenshot({ path: 'test-results/projects-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.getByRole('button', { name: 'Toggle navigation' }).click();
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Main navigation' })
+      .getByRole('link', { name: 'My projects', exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: 'test-results/menu-mobile-320.png', fullPage: true });
 });
 test('instructor saves and publishes a grade for the exact evidence through the UI', async ({
   page,

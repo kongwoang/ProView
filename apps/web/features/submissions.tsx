@@ -27,7 +27,6 @@ export function ProjectsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="YOUR TEAM, YOUR WORK"
         title="My projects"
         description="Follow each project from proposal to final submission."
       />

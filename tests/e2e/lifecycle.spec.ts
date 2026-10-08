@@ -29,7 +29,7 @@ async function actor(browser: Browser, username: string, origin: string) {
   const session = await action(page, '/auth/login', 'POST', () =>
     page.getByRole('button', { name: 'Sign in', exact: true }).click(),
   );
-  await expect(page.getByRole('heading', { name: /Hello,/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   return { page, context, token: session.accessToken as string };
 }
 async function nav(page: Page, path: string) {

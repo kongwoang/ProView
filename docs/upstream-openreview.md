@@ -34,7 +34,7 @@ All paths below refer to the pinned commit. Every adapted leaf component include
 | `components/Note.js`, `components/forum/ForumNote.js` | Submission/review feature presentation    | Use submission title/identity/status metadata, explicit versions and threaded evidence layout; replace generic Note/Invitation orchestration      |
 | `LICENSE.md`                                          | `apps/web/LICENSE.md`                     | Unmodified                                                                                                                                        |
 
-Paths in the destination column are relative to `apps/web` except where shown in full. No OpenReview images, fonts, logos, templates or third-party imported media are retained. ProView branding uses text/CSS and system fonts.
+Paths in the destination column are relative to `apps/web` except where shown in full. No OpenReview images, fonts, logos, templates or third-party imported media are retained. ProView branding uses the user-supplied original icon and self-hosted Montserrat wordmark; the interface body uses system fonts. See [brand provenance](branding.md).
 
 ## Replaced and removed
 

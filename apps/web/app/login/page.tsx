@@ -33,41 +33,23 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="login-page">
-      <section className="login-story">
-        <Link className="brand" href="/" aria-label="ProView home">
-          <ProViewBrand />
-        </Link>
-        <div>
-          <p className="eyebrow">FROM FIRST IDEA TO FINAL REVIEW</p>
-          <h1>
-            Good work grows
-            <br />
-            with good feedback.
-          </h1>
-          <p>
-            One shared workspace for your course projects, peer reviews, and the progress in
-            between.
-          </p>
-          <div className="login-stages">
-            <span>
-              01 <strong>Create</strong>
-            </span>
-            <span>
-              02 <strong>Review</strong>
-            </span>
-            <span>
-              03 <strong>Improve</strong>
-            </span>
+    <div className="login-page">
+      <header className="site-header">
+        <div className="topbar">
+          <Link className="brand" href="/" aria-label="ProView home">
+            <ProViewBrand />
+          </Link>
+          <span className="muted">Course projects and peer review</span>
+        </div>
+        <div className="navigation-bar">
+          <div className="navigation-inner">
+            <span className="login-context">Sign in to your academic workspace</span>
           </div>
         </div>
-        <small>Built for learning. Designed for collaboration.</small>
-      </section>
-      <section className="login-form-panel">
-        <div className="login-form-wrap">
-          <p className="eyebrow">YOUR ACADEMIC WORKSPACE</p>
-          <h2>Welcome back.</h2>
-          <p className="muted">Sign in to pick up where you left off.</p>
+      </header>
+      <main id="main-content" className="login-content">
+        <section className="login-form-wrap" aria-labelledby="login-heading">
+          <h1 id="login-heading">Login</h1>
           {error ? <ErrorState error={error} /> : null}
           <form onSubmit={(event) => void handleSubmit(event)} className="form-stack">
             <Field label="Email or username">
@@ -90,23 +72,28 @@ export default function LoginPage() {
                 placeholder="Enter your password"
               />
             </Field>
-            <SpinnerButton
-              type="submit"
-              loading={pending}
-              disabled={loading || !!user}
-              className="full-width"
-            >
-              Sign in <span aria-hidden="true">→</span>
-            </SpinnerButton>
+            <div className="button-row">
+              <SpinnerButton type="submit" loading={pending} disabled={loading || !!user}>
+                Sign in
+              </SpinnerButton>
+            </div>
           </form>
-          <p className="login-help">
-            Need access or a password reset? Contact your course administrator.
+          <p className="login-help">Need a password reset? Contact your course administrator.</p>
+        </section>
+        <section className="login-access" aria-labelledby="access-heading">
+          <h2 id="access-heading">New to ProView?</h2>
+          <p>Your administrator creates your account and your instructor adds you to a course.</p>
+          <p>
+            Once signed in, you can find your project group, submit PDF versions, review assigned
+            projects and respond to feedback.
           </p>
-          <Link className="source-link" href="/source">
-            Source &amp; acknowledgments
-          </Link>
-        </div>
-      </section>
-    </main>
+          <p className="muted">Contact your course administrator if you need access.</p>
+        </section>
+      </main>
+      <footer className="workspace-footer">
+        <span>ProView · Course projects and peer review</span>
+        <Link href="/source">Source &amp; acknowledgments</Link>
+      </footer>
+    </div>
   );
 }

@@ -32,11 +32,15 @@ Chỉ một agent thực hiện các gói tuần tự theo yêu cầu hiện t�
 
 1. Hoàn thiện success-response DTO/schema cho73/89 operations còn thiếu, đặc biệt projection review/rebuttal/grade theo audience; chuyển các domain views còn viết tay sang generated contracts. Hiện không dùng kiểu tự suy đoán raw Prisma để lấp coverage.
 2. Đối chiếu từng assertion AD01–AD11/S01–S10 và bổ sung test cho phần chưa có bằng chứng: phân tích chi tiết SSR/cache/notifications, payload XSS/log hygiene, failure compensation, auth rate-limit và các concurrency matrix còn thiếu. Test nhóm hiện có không tự chứng minh toàn bộ từng hàng.
-3. Hoàn tất evidence CI cho revision timezone/lịch sử. Deadline và term dates hiện dùng timezone offering; generic audit/notification timestamps ghi rõ timezone trình duyệt. Kiểm thử DST gap/fold và browser UTC/offering New York đã bổ sung.
-4. Format/drift/recovery đã PASS cả native và S3 trong [CI8563118](https://github.com/kongwoang/ProView/actions/runs/37752007606):39 bảng/21 PDF được khôi phục và đối chiếu, cùng các negative checks. Host không có Docker hoặc `pg_dump`/`pg_restore`; đây là kết quả thực ở GitHub Actions, không suy diễn từ unit test.
+
+Đã xác minh: [CI8563118](https://github.com/kongwoang/ProView/actions/runs/37752007606) và [CI3cb69bf](https://github.com/kongwoang/ProView/actions/runs/37753989428) đều PASS cả native/container. Format/drift,28 unit tests, real HTTP/PostgreSQL,7 Chromium tests và recovery local/S3 đều đã chạy thật. Recovery đối chiếu39 bảng/21 PDF và các negative checks. Deadline/term inputs dùng timezone offering; generic audit/notification timestamps ghi rõ timezone trình duyệt. DST gap/fold và browser UTC/offering New York đã được kiểm thử. Profile phân trang và tìm nguồn copy độc lập đã tích hợp. Host thiếu PostgreSQL client tools/Docker nên recovery thực chạy ở GitHub Actions, không suy diễn từ unit test.
 
 ## Công việc operator trước deployment ngoài máy local
 
 Không deploy theo scope hiện tại. TLS, production secrets, backup scheduling/retention/recovery trên host thực và representative load thuộc deployment checklist. Chỉ cần centralized rate limiting khi vận hành nhiều API replicas. Thủ tục và diễn tập phục hồi trong repository được mô tả ở `backup-recovery.md`.
 
 Kết quả chạy thực và CI đã xác minh nằm ở [implementation-verification.md](evidence/implementation-verification.md); [testing.md](testing.md) chỉ tới suites. Không đóng Q00/Q01 chỉ vì core demo chạy được.
+
+## UI adjustment requested on 2026-10-08
+
+The frontend now follows familiar OpenReview presentation: top navigation, centered content, flat lists, bordered tabs and plain forms, while preserving the supplied ProView logo/font and all domain workflows. The login explains administrator-created access; the admin overview shows management tools. See [adaptation decisions](openreview-adaptation.md) and [verification evidence](evidence/implementation-verification.md). This presentation change does not close the remaining response-schema and AD/S assertion-level evidence work above.

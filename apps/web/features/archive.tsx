@@ -64,7 +64,6 @@ export function ArchivePage() {
   return (
     <>
       <PageHeader
-        eyebrow="WORK THAT LIVES ON"
         title="Project archive"
         description="Revisit your project history and learn from approved work across semesters."
       />
