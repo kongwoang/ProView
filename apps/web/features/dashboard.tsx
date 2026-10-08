@@ -181,14 +181,20 @@ export function DashboardPage() {
                         data.projects.slice(0, 5).map((project) => (
                           <article className="project-card" key={project.id}>
                             <h3>
-                              <Link href={`/projects/${project.id}`}>{project.title}</Link>
+                              <Link prefetch={false} href={`/projects/${project.id}`}>
+                                {project.title}
+                              </Link>
                             </h3>
                             <p className="meta">{project.group.name}</p>
                             <p className="eyebrow">
                               {project.offering.course.code} · {project.offering.semester}
                             </p>
                             <footer>
-                              <Link className="link-arrow" href={`/projects/${project.id}`}>
+                              <Link
+                                prefetch={false}
+                                className="link-arrow"
+                                href={`/projects/${project.id}`}
+                              >
                                 Open project →
                               </Link>
                             </footer>
@@ -206,7 +212,7 @@ export function DashboardPage() {
                           <span className="avatar">{offering.course.code.slice(0, 2)}</span>
                           <div className="row-content">
                             <h3>
-                              <Link href={`/offerings/${offering.id}`}>
+                              <Link prefetch={false} href={`/offerings/${offering.id}`}>
                                 {offering.course.title}
                               </Link>
                             </h3>
@@ -244,7 +250,7 @@ export function DashboardPage() {
                         {data.assignedReviews.slice(0, 5).map((assignment) => (
                           <tr key={assignment.id}>
                             <td>
-                              <Link href={`/reviews/${assignment.id}`}>
+                              <Link prefetch={false} href={`/reviews/${assignment.id}`}>
                                 {assignment.projectTitle}
                               </Link>
                               <p>{assignment.stageName}</p>
@@ -285,7 +291,7 @@ export function DashboardPage() {
                           </div>
                           <div className="row-content">
                             <h3>
-                              <Link href={`/offerings/${deadline.offeringId}`}>
+                              <Link prefetch={false} href={`/offerings/${deadline.offeringId}`}>
                                 {deadline.stageName}
                               </Link>
                             </h3>

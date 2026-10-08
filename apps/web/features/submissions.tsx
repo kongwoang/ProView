@@ -37,7 +37,9 @@ export function ProjectsPage() {
               {itemsOf(data).map((project) => (
                 <article className="project-card" key={project.id}>
                   <h3>
-                    <Link href={`/projects/${project.id}`}>{project.title}</Link>
+                    <Link prefetch={false} href={`/projects/${project.id}`}>
+                      {project.title}
+                    </Link>
                   </h3>
                   <p className="meta">{project.group.name}</p>
                   <p className="eyebrow">
@@ -48,7 +50,7 @@ export function ProjectsPage() {
                     <span className="muted small">
                       {project.submissions?.length ?? 0} submission stages started
                     </span>
-                    <Link className="link-arrow" href={`/projects/${project.id}`}>
+                    <Link prefetch={false} className="link-arrow" href={`/projects/${project.id}`}>
                       Open project →
                     </Link>
                   </footer>
@@ -81,7 +83,11 @@ export function ProjectPage({ id }: { id: string }) {
             title={project.title}
             description={project.description}
             actions={
-              <Link className="button secondary" href={`/offerings/${project.offering.id}`}>
+              <Link
+                prefetch={false}
+                className="button secondary"
+                href={`/offerings/${project.offering.id}`}
+              >
                 Course space ↗
               </Link>
             }
@@ -102,6 +108,7 @@ export function ProjectPage({ id }: { id: string }) {
                     </div>
                     {submission ? (
                       <Link
+                        prefetch={false}
                         className="button secondary small"
                         href={`/submissions/${submission.id}`}
                       >

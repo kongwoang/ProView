@@ -222,7 +222,7 @@ export function ArchivePage() {
                         <div className="list-row" key={submission.id}>
                           <div className="row-content">
                             <h3>
-                              <Link href={`/submissions/${submission.id}`}>
+                              <Link prefetch={false} href={`/submissions/${submission.id}`}>
                                 {submission.stage.name}
                               </Link>
                             </h3>

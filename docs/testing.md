@@ -15,15 +15,17 @@ node scripts/acceptance-courses-submissions.mjs
 node scripts/acceptance-auth-grading-archive.mjs
 RUN_HTTP_TESTS=true pnpm --filter @proview/api exec node --import tsx --test test/review-http.test.ts
 pnpm exec playwright install chromium
-# Separate API processes are needed between these two browser suites.
-pnpm exec playwright test --grep-invert '@lifecycle'
+# Separate API processes are needed between these three browser groups.
+pnpm exec playwright test --grep-invert '@lifecycle|instructor saves and publishes a grade'
+# Restart the test API, then:
+pnpm exec playwright test --grep 'instructor saves and publishes a grade'
 # Restart the test API, then:
 pnpm exec playwright test --grep '@lifecycle'
 # With API/web stopped: runner starts isolated optimized processes per suite.
 pnpm test:acceptance
 ```
 
-The default unit run explicitly skips HTTP integration; run the enabled command to test it. Authentication is rate-limited to30 login/refresh attempts per IP per minute. Sequential integration/browser suites share that budget; the CI runner starts an isolated API process for each suite including separate focused and full lifecycle browser suites, rather than weakening the application limiter. `pnpm test:acceptance` handles this automatically.
+The default unit run explicitly skips HTTP integration; run the enabled command to test it. Authentication is rate-limited to30 login/refresh attempts per IP per minute. Sequential integration/browser suites share that budget; the CI runner starts an isolated API process for each suite including focused, grading and full lifecycle browser groups, rather than weakening the application limiter. `pnpm test:acceptance` handles this automatically.
 
 Course/submission acceptance creates isolated course and offering data, checks atomic CSV previews/imports, group freezes, concurrent version numbering, PDF checksums, authorization/Range responses, explicit submit replay, stale conflicts, reopen history and configuration-only copy. The auth/grading/archive suite tests cookie origin, rotation/replay revocation, password/reset/deactivation invalidation, criterion completeness, overrides/corrections, exact-version similarity gating, staff-only operations and later-cohort approved archive access/revocation.
 
@@ -36,6 +38,8 @@ Assignment-engine tests compare deterministic results to an independent exhausti
 See `evidence/implementation-verification.md` for executed checks. The test suite does not establish full browser/assistive-technology compatibility, malicious-PDF scanning, distributed rate-limit behavior or external-service performance. Automated recovery rehearsals cover snapshot/database/PDF restoration on disposable local/S3 resources; they do not establish recovery on a deployment operator's infrastructure.
 
 Container/S3 verification runs `bash scripts/verify-containers.sh` from a clean checkout without `.env`, with Docker and Chromium installed. It creates a uniquely named disposable Compose project, builds the actual images, migrates/seeds PostgreSQL and private MinIO, runs real HTTP/browser tests through Nginx, denies anonymous object reads and removes only its own test volumes afterward. GitHub's `containers` job runs this independently of native verification.
+
+Native host verification before DNS is recorded in [pre-dns-server-verification.md](evidence/pre-dns-server-verification.md). `node scripts/acceptance-native-proxy.mjs` is opt-in: the test client requires `APP_ENV=test`, disposable database `proview_test` on loopback35433, proxy34080 and an HTTPS `FRONTEND_URL`; the separate API runs production cookie/origin settings. It creates test sessions and intentionally exhausts one test IP's real auth limiter. Never reuse the production database or expose the verification listeners.
 
 ## Required browser scenarios
 

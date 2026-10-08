@@ -52,7 +52,9 @@ export function NotificationsPage() {
                       <h3>
                         {notification.targetUrl?.startsWith('/') &&
                         !notification.targetUrl.startsWith('//') ? (
-                          <Link href={notification.targetUrl}>{notification.title}</Link>
+                          <Link prefetch={false} href={notification.targetUrl}>
+                            {notification.title}
+                          </Link>
                         ) : (
                           notification.title
                         )}

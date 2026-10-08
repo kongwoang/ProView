@@ -19,9 +19,15 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
 }) => {
   const external: string[] = [];
   const errors: string[] = [];
+  const recordPrefetches: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await context.route('**/*', (route) => {
     const url = new URL(route.request().url());
+    if (
+      route.request().headers()['next-router-prefetch'] === '1' &&
+      /^\/(offerings|projects|submissions|reviews)\/[^/]+$/.test(url.pathname)
+    )
+      recordPrefetches.push(url.pathname);
     if (
       ['http:', 'https:'].includes(url.protocol) &&
       !['localhost', '127.0.0.1'].includes(url.hostname)
@@ -145,6 +151,7 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   await page.goto('/projects');
   await expect(page).toHaveURL(/\/login/);
   expect(external).toEqual([]);
+  expect(recordPrefetches).toEqual([]);
   expect(errors).toEqual([]);
 });
 test('instructor and administrator pages resolve real data', async ({ page }) => {

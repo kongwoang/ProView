@@ -102,7 +102,7 @@ export function SimilarityPage() {
                   {data.items.map((check) => (
                     <tr key={check.id}>
                       <td>
-                        <Link href={`/submissions/${check.submissionId}`}>
+                        <Link prefetch={false} href={`/submissions/${check.submissionId}`}>
                           {check.project.title}
                         </Link>
                         <p>

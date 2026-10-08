@@ -37,7 +37,7 @@ Chỉ một agent thực hiện các gói tuần tự theo yêu cầu hiện t�
 
 ## Công việc operator trước deployment ngoài máy local
 
-Không deploy theo scope hiện tại. TLS, production secrets, backup scheduling/retention/recovery trên host thực và representative load thuộc deployment checklist. Chỉ cần centralized rate limiting khi vận hành nhiều API replicas. Thủ tục và diễn tập phục hồi trong repository được mô tả ở `backup-recovery.md`.
+Đã chuẩn bị deployment nội bộ trên host theo yêu cầu mới; DNS/Tunnel và domain-level TLS chưa kích hoạt. Secrets riêng đã tạo, populated recovery đã chạy trên môi trường test riêng của host; scheduling/retention, bản backup ngoài disk server và sustained load vẫn thuộc deployment checklist. Chỉ cần centralized rate limiting khi vận hành nhiều API replicas. Thủ tục và diễn tập phục hồi trong repository được mô tả ở `backup-recovery.md`.
 
 Kết quả chạy thực và CI đã xác minh nằm ở [implementation-verification.md](evidence/implementation-verification.md); [testing.md](testing.md) chỉ tới suites. Không đóng Q00/Q01 chỉ vì core demo chạy được.
 
@@ -50,3 +50,5 @@ Follow-up UI clarification: preserve ProView navy/blue/purple while matching Ope
 ## Native server preparation requested on 2026-10-08
 
 ProView now runs internally on `ServerThayQuang` without root, with all application-owned files beneath `/media/data3/users/longnd/ProView`. Local Node/PostgreSQL/Caddy and a private tmux supervisor passed readiness, SSH-disconnect survival, child restart, graceful stop/start and empty-database backup/restore checks. See [native deployment](native-deployment.md) and the evidence document. Public Cloudflare DNS/Tunnel, admin provisioning, domain-level HTTPS/PDF/lifecycle validation and independent backup retention remain pending. Boot startup is manual to respect the directory-only requirement. The remaining contract and AD/S plan gaps are unchanged.
+
+The user requested comprehensive verification before DNS. Actual host tests now include internal production-mode HTTPS/browser flows,61 proxy/security assertions, a disposable PostgreSQL crash/restart, log rotation,120 read requests at concurrency10 and recovery of39 tables/26 PDFs. Production data remained unchanged. [Pre-DNS report](evidence/pre-dns-server-verification.md) records exact results and gates; it does not certify public DNS/Tunnel or all remaining AD/S assertions. The current Source page points to the private repository, so accessible deployed-source distribution remains a public-release item.

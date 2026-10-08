@@ -105,7 +105,11 @@ export function ReviewsPage() {
                     </td>
                     <td>
                       {['ASSIGNED', 'IN_PROGRESS', 'SUBMITTED'].includes(assignment.status) && (
-                        <Link className="button secondary" href={`/reviews/${assignment.id}`}>
+                        <Link
+                          prefetch={false}
+                          className="button secondary"
+                          href={`/reviews/${assignment.id}`}
+                        >
                           {assignment.status === 'SUBMITTED' ? 'View review' : 'Open review'} →
                         </Link>
                       )}
@@ -198,6 +202,7 @@ export function ReviewEditorPage({ id }: { id: string }) {
             {action.feedback}
             <div className="button-row" style={{ marginBottom: 20 }}>
               <Link
+                prefetch={false}
                 className="button secondary"
                 href={`/submissions/${data.assignment.submissionId}`}
               >
@@ -798,7 +803,9 @@ export function ReviewManagementPage() {
                     <header>
                       <div>
                         <strong>
-                          <Link href={`/submissions/${a.submissionId}`}>{a.projectTitle}</Link>
+                          <Link prefetch={false} href={`/submissions/${a.submissionId}`}>
+                            {a.projectTitle}
+                          </Link>
                         </strong>
                         <p className="small muted">
                           {a.stageName} · {a.reviewerLabel}
@@ -807,7 +814,11 @@ export function ReviewManagementPage() {
                       <StatusBadge status={a.status} />
                     </header>
                     <div className="button-row">
-                      <Link className="button secondary small" href={`/reviews/${a.id}`}>
+                      <Link
+                        prefetch={false}
+                        className="button secondary small"
+                        href={`/reviews/${a.id}`}
+                      >
                         Review details
                       </Link>
                       {['ASSIGNED', 'IN_PROGRESS'].includes(a.status) && (

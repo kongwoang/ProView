@@ -1,0 +1,54 @@
+# Kiểm tra server trước DNS — 08/10/2026
+
+Kiểm tra thực trên SSH `ServerThayQuang`, user `longnd`, Ubuntu22.04 x86_64. Production ở `/media/data3/users/longnd/ProView`. Chỉ một agent thực hiện; không sudo, không cấu hình hệ thống/home/cron, không đổi DNS hoặc mở public listener.
+
+## Cách cô lập
+
+Bản test ở `.runtime/verification/pre-dns-20261008/source`, dùng PostgreSQL riêng35433, database `proview_test`, credentials ngẫu nhiên và kho PDF riêng. Production vẫn dùng PostgreSQL35432 và các cổng33000/33001/33080. Các cổng test3000/3001/34080/34443 chỉ bind127.0.0.1. Chromium chạy từ workstation qua SSH forward localhost34443.
+
+API test chạy `APP_ENV=production`, secure cookies, tắt seed/docs, với origin `https://localhost:34443`. Caddy test dùng CA riêng trong thư mục verification, không cài certificate/trust hệ thống. Curl kiểm chứng chain/hostname bằng public CA; Chromium pin certificate test, và request client dùng `NODE_EXTRA_CA_CERTS` cho CA này. Đây là HTTPS nội bộ; chưa chứng minh certificate, DNS, Tunnel hoặc client-IP forwarding của domain thật.
+
+Source ứng dụng ban đầu là `e0568a5`; các revision kiểm thử tiếp theo không đổi backend. Bản sửa frontend/prefetch được kiểm tra riêng phía dưới. Không seed hoặc tạo administrator trong production.
+
+## Kết quả chạy thật
+
+| Nhóm kiểm tra                     | Kết quả                                                                                                                                                                                                                                                          |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Toolchain/build                   | Node24.21.0, pnpm10.34.6, PostgreSQL17.10; frozen install, Prisma generate, hai migrations, seed và seed-repeat; lint/typecheck/build/format/OpenAPI drift/offline scan PASS trên server                                                                         |
+| Unit                              | 29 PASS:2 backup +11 web +16 API; HTTP opt-in chạy riêng, không tính skipped là PASS                                                                                                                                                                             |
+| Database integrity                | 17 rejection checks + exact-version similarity fixture PASS                                                                                                                                                                                                      |
+| Courses/submissions HTTP          | 53 assertions PASS: CSV atomicity, nhóm/quyền, concurrent versions, immutable PDF/checksum/Range, submit/replay/stale/reopen/copy                                                                                                                                |
+| Auth/grading/archive HTTP         | 142 assertions PASS: session rotation/replay/revocation, account controls, grade evidence/publication/correction, similarity exact version, later-cohort access/revoke                                                                                           |
+| Review HTTP/PostgreSQL            | PASS: assignments/COI, anonymous projections, drafts/conflicts, release/corrections, rebuttal snapshots, discussion/reminders/outbox and concurrent row-lock regressions                                                                                         |
+| Chromium qua HTTPS nội bộ         | 7 scenarios PASS (5+1+1, API mới mỗi nhóm); E01–E10 đi qua UI thực, có kiểm tra direct PDF authorization; mobile320px/390px và không request external                                                                                                            |
+| Native proxy/security             | 61 assertions PASS: Secure/HttpOnly/SameSite/path/host-only cookie, refresh/logout and Origin rejection, actual stored CF IP overriding forged XFF,30 attempts then429 and separate-IP isolation,413 oversized body, private paths and no-store/security headers |
+| Initial administrator             | DB bootstrap riêng: tạo lần đầu/audit PASS, lần hai từ chối; production seed từ chối; DB này đã xóa                                                                                                                                                              |
+| Supervisor API                    | Dừng đúng API child test bằng SIGTERM; PID mới và readiness200 PASS                                                                                                                                                                                              |
+| PostgreSQL crash                  | SIGKILL chỉ postmaster test; readiness503, live200, supervisor khởi động postmaster mới/WAL recovery và readiness200 PASS                                                                                                                                        |
+| Tải đọc giới hạn                  | 120 authenticated requests,10 đồng thời,0 lỗi; p50=12ms, p95=35ms, max=52ms qua proxy HTTP nội bộ                                                                                                                                                                |
+| Log rotation                      | Log test vượt10MiB được rotate, API vẫn healthy PASS                                                                                                                                                                                                             |
+| Graceful stop                     | Applications dừng trước PostgreSQL; PID file được xóa; chỉ tiến trình test dừng PASS                                                                                                                                                                             |
+| Populated recovery                | Backup/restore39 tables và26 READY PDFs; toàn bộ fingerprints/checksums khớp; occupied-target/corrupt-bundle/missing-PDF refusals PASS; disposable restore DB/bundle đã xóa                                                                                      |
+| Production isolation              | Fingerprint của cả39 bảng trước/sau giống nhau; User=0, SubmissionFile=0; application DB role không superuser/CREATEDB/CREATEROLE                                                                                                                                |
+| Permissions/logs/storage          | Root và PG0700, env/pgpass0600; write/delete private storage probe PASS;24 runtime logs không có literal database/JWT secrets; không có public Tunnel config                                                                                                     |
+| Production cuối kiểm tra vận hành | API ready200, proxy login200; chỉ33000/33001/33080/35432 listen ở127.0.0.1                                                                                                                                                                                       |
+
+Tải đọc trên là một mẫu nhỏ trên fixtures, không phải cam kết capacity, sustained load hoặc cold-start latency. Kiểm tra log chỉ so literal secrets đã biết; không tự chứng minh mọi dạng dữ liệu nhạy cảm đều được che. Crash test dùng database test, không gây crash production. Supervisor test dùng code supervisor triển khai, chỉ đổi cổng web/proxy và đường dẫn dữ liệu cho môi trường riêng.
+
+Log chi tiết, script setup/runtime, credentials test và certificate nằm trong `.runtime/verification/pre-dns-20261008`; không đưa vào Git/CI artifacts. Backup dumps được harness xóa sau rehearsal vì có session/account hashes. Production fingerprint không đổi: `27a201bb5660376ed2c8fb92049dd380ae96af0d0c9a245e51098b585b3bc38a`.
+
+## Điều hướng và CI
+
+Các run `e0568a5`, `24c5d40`, `dddf037` đã phát hiện lifecycle đôi lúc chờ trang record trong CI. HTTP, permissions và nội bộ server không có lỗi tương ứng; điều này vẫn là điều kiện cần xử lý trước khi chốt release. Traces có RSC prefetch/navigation response200 nhưng chưa hoàn tất stream và chưa chuyển sang trang chi tiết. Việc chỉ thêm chờ route ở một bước không giải quyết mọi vị trí.
+
+Frontend nay tắt background prefetch cho link tới course offering/project/submission/review record. Đây là [tùy chọn của Next Link](https://nextjs.org/docs/app/api-reference/components/link#prefetch); static role navigation giữ cách tải hiện tại. Test kiểm tra không có record prefetch, vẫn xác minh click/UI/API thực. Helpers lifecycle đợi project/submission render trước khi bắt đầu mutation. Kết quả CI của revision cuối phải được xác nhận độc lập; không suy diễn PASS từ HTTP hoặc build.
+
+## Điều kiện còn lại trước public
+
+1. Xác nhận native/container CI của revision cuối PASS và cập nhật frontend production sang đúng revision đã kiểm tra.
+2. Provision administrator thật bằng CLI và thông tin do operator chọn; production hiện cố ý không có account demo/admin.
+3. Trang Source hiện trỏ repository private. Cần cung cấp source của bản frontend triển khai mà người dùng truy cập được, theo yêu cầu source/license trong deployment checklist; chưa đổi visibility repo.
+4. Backup có recovery đã kiểm tra nhưng chưa có lịch, retention và bản sao độc lập ngoài disk server. Reboot vẫn cần SSH + `nativectl.sh start` vì không đăng ký cron/systemd ngoài thư mục được phép.
+5. Sau khi nối DNS/Tunnel: kiểm chứng domain/TLS, login/refresh/logout, client IP thật, PDF Range và representative workflow qua `proview.hoangpc.io.vn`. Chưa thực hiện các thao tác đó trong đợt kiểm tra này.
+
+API readiness hiện kiểm tra PostgreSQL, không kiểm tra liên tục khả năng ghi storage. Một API replica dùng rate limiter trong process; nhiều replica cần limiter chung. Response-schema coverage16/89 và AD/S assertion mapping còn thiếu, theo `implementation-status.md`. Các test trên không phải chứng nhận không còn bug, pentest toàn diện, malicious-PDF scanning hoặc accessibility audit.

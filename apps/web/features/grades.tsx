@@ -159,10 +159,12 @@ export function GradingPage() {
                     <article className="project-card" key={s.id}>
                       <StatusBadge status={s.status} />
                       <h3 style={{ marginTop: 14 }}>
-                        <Link href={`/grading/${s.id}`}>{s.project.title}</Link>
+                        <Link prefetch={false} href={`/grading/${s.id}`}>
+                          {s.project.title}
+                        </Link>
                       </h3>
                       <p className="muted small">{s.stage.name}</p>
-                      <Link className="button secondary" href={`/grading/${s.id}`}>
+                      <Link prefetch={false} className="button secondary" href={`/grading/${s.id}`}>
                         Review & grade →
                       </Link>
                     </article>
@@ -236,7 +238,7 @@ export function GradingWorkspace({ id }: { id: string }) {
               actions={<StatusBadge status={context.submission.status} />}
             />
             <div className="button-row" style={{ marginBottom: 20 }}>
-              <Link className="button secondary" href={`/submissions/${id}`}>
+              <Link prefetch={false} className="button secondary" href={`/submissions/${id}`}>
                 Submission workspace
               </Link>
               <button className="button secondary" onClick={() => setShowPdf(!showPdf)}>

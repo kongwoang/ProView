@@ -189,7 +189,9 @@ export function CoursesPage() {
                 {data.items.map((offering) => (
                   <article className="project-card" key={offering.id}>
                     <h3>
-                      <Link href={`/offerings/${offering.id}`}>{offering.course.title}</Link>
+                      <Link prefetch={false} href={`/offerings/${offering.id}`}>
+                        {offering.course.title}
+                      </Link>
                     </h3>
                     <div className="section-heading">
                       <span className="eyebrow">{offering.course.code}</span>
@@ -203,7 +205,11 @@ export function CoursesPage() {
                     </p>
                     <footer>
                       <span className="small muted">{offering.timezone}</span>
-                      <Link className="link-arrow" href={`/offerings/${offering.id}`}>
+                      <Link
+                        prefetch={false}
+                        className="link-arrow"
+                        href={`/offerings/${offering.id}`}
+                      >
                         Open course →
                       </Link>
                     </footer>
@@ -632,7 +638,9 @@ function Groups({ offeringId, staff }: { offeringId: string; staff: boolean }) {
                     </div>
                     {group.project && (
                       <h3>
-                        <Link href={`/projects/${group.project.id}`}>{group.project.title}</Link>
+                        <Link prefetch={false} href={`/projects/${group.project.id}`}>
+                          {group.project.title}
+                        </Link>
                       </h3>
                     )}
                     <p className="muted small">
