@@ -43,7 +43,7 @@ interface GradingContext {
     submittedVersionId: string;
     project: { title: string };
   };
-  rubric: { criteria: Criterion[] };
+  rubric: { id: string; criteria: Criterion[] };
   versions: { id: string; versionNumber: number }[];
   assignments: {
     id: string;
@@ -189,12 +189,39 @@ export function GradingWorkspace({ id }: { id: string }) {
   );
   const [showPdf, setShowPdf] = useState(false);
   const draftRevisionRef = useRef<number | null>(null);
+  const draftIdRef = useRef<string | null>(null);
+  const evidenceRef = useRef<{ submissionVersionId: string; rubricRevisionId: string } | null>(
+    null,
+  );
   return (
     <QueryState query={query}>
       {(context) => {
         const draft = context.grade.draft;
         const published = context.grade.published;
-        if (draftRevisionRef.current === null) draftRevisionRef.current = draft?.revision ?? 0;
+        if (draftRevisionRef.current === null) {
+          draftRevisionRef.current = draft?.revision ?? 0;
+          draftIdRef.current = draft?.id ?? null;
+        }
+        if (!evidenceRef.current)
+          evidenceRef.current = {
+            submissionVersionId: context.submission.submittedVersionId,
+            rubricRevisionId: context.rubric.id,
+          };
+        if (
+          evidenceRef.current.submissionVersionId !== context.submission.submittedVersionId ||
+          evidenceRef.current.rubricRevisionId !== context.rubric.id
+        )
+          return (
+            <Section title="Grading evidence changed">
+              <p>
+                The submitted PDF or rubric has changed. Reload and review the current evidence
+                before grading.
+              </p>
+              <button className="button" onClick={() => window.location.reload()}>
+                Reload assessment
+              </button>
+            </Section>
+          );
         return (
           <>
             {action.feedback}
@@ -311,6 +338,7 @@ export function GradingWorkspace({ id }: { id: string }) {
                           () =>
                             api.put<GradeResponse>(`/submissions/${id}/grade`, {
                               revision: draftRevisionRef.current ?? 0,
+                              ...evidenceRef.current,
                               criterionScores: context.rubric.criteria
                                 .filter((criterion) => formText(f, `score-${criterion.id}`) !== '')
                                 .map((criterion) => ({
@@ -332,7 +360,10 @@ export function GradingWorkspace({ id }: { id: string }) {
                           'Private grade draft saved.',
                         )
                         .then((result) => {
-                          if (result?.draft) draftRevisionRef.current = result.draft.revision;
+                          if (result?.draft) {
+                            draftRevisionRef.current = result.draft.revision;
+                            draftIdRef.current = result.draft.id;
+                          }
                         });
                     }}
                   >
@@ -411,12 +442,16 @@ export function GradingWorkspace({ id }: { id: string }) {
                               .run(
                                 () =>
                                   api.post(`/grades/${context.grade.id}/publish`, {
-                                    revision: draft.revision,
+                                    revision: draftRevisionRef.current ?? 0,
+                                    gradeRevisionId: draftIdRef.current ?? draft.id,
                                   }),
                                 'Grade published.',
                               )
                               .then((result) => {
-                                if (result) draftRevisionRef.current = 0;
+                                if (result) {
+                                  draftRevisionRef.current = 0;
+                                  draftIdRef.current = null;
+                                }
                               });
                         }}
                       >

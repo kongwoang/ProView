@@ -3176,6 +3176,14 @@
       "SaveGradeDto": {
         "type": "object",
         "properties": {
+          "submissionVersionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rubricRevisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "revision": {
             "type": "number",
             "minimum": 0
@@ -3205,17 +3213,21 @@
             "maxLength": 2000
           }
         },
-        "required": ["revision", "criterionScores"]
+        "required": ["submissionVersionId", "rubricRevisionId", "revision", "criterionScores"]
       },
       "PublishGradeDto": {
         "type": "object",
         "properties": {
+          "gradeRevisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "revision": {
             "type": "number",
             "minimum": 0
           }
         },
-        "required": ["revision"]
+        "required": ["gradeRevisionId", "revision"]
       },
       "ApproveArchiveDto": {
         "type": "object",

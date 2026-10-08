@@ -68,7 +68,10 @@ test('instructor and administrator pages resolve real data', async ({ page }) =>
     '/similarity-checks',
     '/archive',
   ]) {
-    await page.goto(path);
+    await page
+      .getByRole('navigation', { name: 'Main navigation' })
+      .locator(`a[href="${path}"]`)
+      .click();
     await expect(page.getByRole('button', { name: 'Sign out', exact: true })).toBeVisible();
     await page.waitForLoadState('networkidle');
     await expect(page.locator('main h1').first()).toBeVisible();
@@ -77,10 +80,16 @@ test('instructor and administrator pages resolve real data', async ({ page }) =>
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
   await login(page, 'admin');
-  await page.goto('/admin/users');
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .locator('a[href="/admin/users"]')
+    .click();
   await expect(page.getByRole('heading', { name: 'User accounts' })).toBeVisible();
   await expect(page.locator('tbody')).toContainText('Demo Administrator');
-  await page.goto('/admin/audit');
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .locator('a[href="/admin/audit"]')
+    .click();
   await expect(page.locator('tbody tr').first()).toBeVisible();
   expect(failures).toEqual([]);
 });
@@ -158,4 +167,42 @@ test('mobile navigation remains usable without horizontal page overflow', async 
     )
     .toBeLessThanOrEqual(0);
   await page.screenshot({ path: 'test-results/projects-mobile.png', fullPage: true });
+});
+test('instructor saves and publishes a grade for the exact evidence through the UI', async ({
+  page,
+}) => {
+  await login(page, 'instructor');
+  await page.goto(`/grading/${demoId('active-group-2-submission-2')}`);
+  await expect(page.getByRole('heading', { name: 'Instructor assessment' })).toBeVisible();
+  const scores = page.locator('input[name^="score-"]');
+  await expect(scores).toHaveCount(4);
+  for (const score of await scores.all()) await score.fill('8');
+  await page
+    .getByLabel('Overall feedback')
+    .fill('Browser grading acceptance: exact evidence verified.');
+  const correction = page.getByLabel('Reason for correcting the published grade');
+  if (await correction.isVisible())
+    await correction.fill('Repeatable acceptance correction with audit evidence.');
+  const saved = page.waitForResponse(
+    (response) => response.url().endsWith('/grade') && response.request().method() === 'PUT',
+  );
+  await page.getByRole('button', { name: 'Save private draft', exact: true }).click();
+  const response = await saved;
+  expect(response.status()).toBe(200);
+  const grade = await response.json();
+  expect(response.request().postDataJSON().submissionVersionId).toBe(
+    grade.draft.submissionVersionId,
+  );
+  expect(response.request().postDataJSON().rubricRevisionId).toBe(grade.draft.rubricRevisionId);
+  await expect(page.getByText('Private grade draft saved.', { exact: true })).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  const published = page.waitForResponse(
+    (response) => response.url().endsWith('/publish') && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Publish grade', exact: true }).click();
+  const publish = await published;
+  expect(publish.status()).toBe(201);
+  expect(publish.request().postDataJSON().gradeRevisionId).toBe(grade.draft.id);
+  expect((await publish.json()).published.overall).toBe(8);
+  await expect(page.getByText('Grade published.', { exact: true })).toBeVisible();
 });

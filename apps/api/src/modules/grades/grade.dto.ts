@@ -27,6 +27,12 @@ export class CriterionScoreDto {
   comment?: string;
 }
 export class SaveGradeDto {
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  submissionVersionId!: string;
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  rubricRevisionId!: string;
   @ApiProperty({ type: Number, minimum: 0 })
   @IsInt()
   @Min(0)
@@ -60,6 +66,9 @@ export class SaveGradeDto {
   correctionReason?: string;
 }
 export class PublishGradeDto {
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  gradeRevisionId!: string;
   @ApiProperty({ type: Number, minimum: 0 })
   @IsInt()
   @Min(0)

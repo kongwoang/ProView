@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { config } from 'dotenv';
 import path from 'node:path';
+import { setTimeout as pause } from 'node:timers/promises';
 import { PrismaService } from '../src/infrastructure/prisma.service';
 import { AuditService } from '../src/modules/audit/audit.service';
 import { PolicyService } from '../src/modules/policies/policy.service';
@@ -484,6 +485,60 @@ test(
         await db.auditLog.count({ where: { action: 'REBUTTAL_EXPIRED', entityId: rebuttal.id } }),
         1,
       );
+      // Hold an actual row lock, let HTTP grading wait, then reopen the evidence before it acquires the lock.
+      const gradeTarget = await db.submission.findUniqueOrThrow({
+        where: { id: submissions[1]!.id },
+        include: { stage: true },
+      });
+      let gradeRequest: Promise<JsonRecord> | undefined;
+      await db.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "Submission" WHERE id = ${gradeTarget.id}::uuid FOR UPDATE`;
+          gradeRequest = request(
+            staff,
+            `/submissions/${gradeTarget.id}/grade`,
+            'PUT',
+            {
+              revision: 0,
+              submissionVersionId: gradeTarget.submittedVersionId,
+              rubricRevisionId: gradeTarget.stage.rubricRevisionId,
+              criterionScores: [],
+            },
+            409,
+          );
+          void gradeRequest.catch(() => undefined);
+          let waiting = false;
+          for (let attempt = 0; attempt < 100; attempt++) {
+            await tx.$executeRaw`SELECT pg_stat_clear_snapshot()`;
+            const rows = await tx.$queryRaw<
+              { count: bigint }[]
+            >`SELECT count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`;
+            if (Number(rows[0]!.count) > 0) {
+              waiting = true;
+              break;
+            }
+            await pause(20);
+          }
+          assert.equal(
+            waiting,
+            true,
+            'The real HTTP grade save must be waiting for the submission lock',
+          );
+          await tx.submission.update({
+            where: { id: gradeTarget.id },
+            data: {
+              status: 'DRAFT',
+              submittedVersionId: null,
+              inputLockedAt: null,
+              reviewCycle: { increment: 1 },
+              revision: { increment: 1 },
+            },
+          });
+        },
+        { timeout: 10_000 },
+      );
+      await gradeRequest;
+      assert.equal(await db.grade.count({ where: { submissionId: gradeTarget.id } }), 0);
       console.log(`Review HTTP acceptance fixture ${offering.id}: all checks passed.`);
     } finally {
       await db.$disconnect();

@@ -432,6 +432,7 @@ export class SubmissionsService {
     return this.db.$transaction(async (tx) => {
       const submission = await this.lock(tx, id);
       if (
+        submission.offering.status !== 'ACTIVE' ||
         submission.revision !== revision ||
         submission.status !== 'SUBMITTED' ||
         submission.stage.allowReviews ||

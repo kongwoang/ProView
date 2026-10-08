@@ -265,6 +265,11 @@ export class GradesService {
       throw new ConflictException('A submitted version is required');
     if (submission.offering.status !== 'ACTIVE')
       throw new ConflictException('The course offering is not editable');
+    if (
+      input.submissionVersionId !== submission.submittedVersionId ||
+      input.rubricRevisionId !== submission.stage.rubricRevisionId
+    )
+      throw new ConflictException('Grade evidence has changed; reload the assessment');
     const criteria = submission.stage.rubricRevision.criteria;
     const map = new Map(input.criterionScores.map((s) => [s.criterionId, s.score]));
     if (map.size !== input.criterionScores.length)
@@ -283,6 +288,17 @@ export class GradesService {
     const calculated = calculateGrade(criteria, map);
     return this.db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Submission" WHERE id=${submissionId}::uuid FOR UPDATE`;
+      const locked = await tx.submission.findUniqueOrThrow({
+        where: { id: submissionId },
+        include: { stage: true, offering: true },
+      });
+      if (
+        locked.revision !== submission.revision ||
+        locked.submittedVersionId !== input.submissionVersionId ||
+        locked.stage.rubricRevisionId !== input.rubricRevisionId ||
+        locked.offering.status !== 'ACTIVE'
+      )
+        throw new ConflictException('Grade evidence has changed; reload the assessment');
       let grade = await tx.grade.findUnique({
         where: { submissionId },
         include: { draftRevision: true },
@@ -365,6 +381,8 @@ export class GradesService {
     await this.policy.requireInstructor(actor, grade.submission.offeringId);
     if (!grade.draftRevision) throw new ConflictException('No grade draft is ready to publish');
     const draft = grade.draftRevision;
+    if (draft.id !== input.gradeRevisionId)
+      throw new ConflictException('This grade draft has been replaced');
     if (
       !['REVIEW_COMPLETED', 'FINALIZED'].includes(grade.submission.status) ||
       !grade.submission.inputLockedAt

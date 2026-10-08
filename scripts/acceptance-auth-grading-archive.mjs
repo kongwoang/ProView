@@ -4,7 +4,13 @@ const base = process.env.SMOKE_API_URL || 'http://127.0.0.1:3001';
 const origin = process.env.FRONTEND_URL || 'http://localhost:3000';
 const demoPassword = process.env.DEMO_PASSWORD || 'ProViewDemo!2026';
 let assertions = 0;
+let gradeEvidence;
+let gradeDraftId;
 async function request(path, actor, method = 'GET', body, expected = 200, extraHeaders = {}) {
+  if (body && method === 'PUT' && /^\/submissions\/[^/]+\/grade$/.test(path))
+    body = { ...gradeEvidence, ...body };
+  if (body && /^\/grades\/[^/]+\/publish$/.test(path))
+    body = { gradeRevisionId: gradeDraftId, ...body };
   const response = await fetch(`${base}/api/v1${path}`, {
     method,
     headers: {
@@ -18,6 +24,7 @@ async function request(path, actor, method = 'GET', body, expected = 200, extraH
   const data = await response.json();
   assert.equal(response.status, expected, `${method} ${path}: ${JSON.stringify(data)}`);
   assertions++;
+  if (data.draft?.id) gradeDraftId = data.draft.id;
   return { data, cookie: response.headers.get('set-cookie')?.split(';')[0] };
 }
 const api = async (...args) => (await request(...args)).data;
@@ -163,6 +170,7 @@ async function upload(path, actor) {
   return data;
 }
 let version = await upload(`/submissions/${submission.id}/versions`, student);
+const firstVersionId = version.id;
 let detail = await api(`/submissions/${submission.id}`, student);
 let submitted = await api(
   `/submissions/${submission.id}/submit`,
@@ -219,6 +227,17 @@ check = checks.items.find((row) => row.version.id === version.id);
 assert.equal(check.status, 'PENDING');
 assertions++;
 const context = await api(`/submissions/${submission.id}/grading-context`, instructor);
+gradeEvidence = {
+  submissionVersionId: context.submission.submittedVersionId,
+  rubricRevisionId: context.rubric.id,
+};
+await api(
+  `/submissions/${submission.id}/grade`,
+  instructor,
+  'PUT',
+  { revision: 0, submissionVersionId: firstVersionId, criterionScores: [] },
+  409,
+);
 const scores = context.rubric.criteria.map((criterion) => ({
   criterionId: criterion.id,
   score: 8,
@@ -325,6 +344,7 @@ let published = await api(
   { revision: grade.draft.revision },
   201,
 );
+const firstGradeRevisionId = published.published.id;
 assert.equal(published.published.submissionVersionId, version.id);
 assertions++;
 await api(
@@ -342,6 +362,13 @@ grade = await api(`/submissions/${submission.id}/grade`, instructor, 'PUT', {
   correctionReason: 'Correct a documented grading omission',
   feedback: 'Revised final feedback',
 });
+await api(
+  `/grades/${grade.id}/publish`,
+  instructor,
+  'POST',
+  { revision: grade.draft.revision, gradeRevisionId: firstGradeRevisionId },
+  409,
+);
 published = await api(
   `/grades/${grade.id}/publish`,
   instructor,
