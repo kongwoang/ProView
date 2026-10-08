@@ -313,6 +313,9 @@ test('@lifecycle instructor setup → proposal versions → assignment/COI → a
     await p.reload();
     await p.getByLabel('Review management course').selectOption(created.id);
     await p.getByRole('link', { name: titles[0], exact: true }).first().click();
+    await expect(p).toHaveURL((url) => url.pathname === `/submissions/${proposals[0].id}`, {
+      timeout: 30_000,
+    });
     await p.getByRole('tab', { name: 'Reviews', exact: true }).click();
     await expect(p.getByText(`${semester} team 3`, { exact: true })).toBeVisible();
     await p.getByRole('button', { name: 'Release reviews', exact: true }).click();
