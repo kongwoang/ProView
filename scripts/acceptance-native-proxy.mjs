@@ -54,7 +54,7 @@ try {
   check(health.headers.get('cache-control') === 'no-store');
   check(health.headers.get('x-content-type-options') === 'nosniff');
   await request('/me', 401);
-  await request('/api/docs', 404);
+  check((await fetch(new URL('/api/docs', base))).status === 404);
   const response = await request(
     '/auth/login',
     200,
@@ -89,6 +89,17 @@ try {
   });
   await request('/me', 200, {
     headers: { Authorization: `Bearer ${renewedSession.accessToken}` },
+  });
+  const oversizedPdf = new FormData();
+  oversizedPdf.append(
+    'file',
+    new Blob([Buffer.alloc(20 * 1024 * 1024 + 1)], { type: 'application/pdf' }),
+    'oversized.pdf',
+  );
+  await request('/submissions/00000000-0000-4000-a000-000000000001/versions', 413, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${renewedSession.accessToken}` },
+    body: oversizedPdf,
   });
   await request('/auth/logout', 200, {
     method: 'POST',
