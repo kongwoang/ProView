@@ -50,13 +50,21 @@ async function project(page: Page, title: string) {
 }
 async function startSubmission(page: Page, title: string, stage: string) {
   await project(page, title);
-  return action(page, '/submissions', 'POST', () =>
+  const submission = await action(page, '/submissions', 'POST', () =>
     page
       .locator('.list-row')
       .filter({ has: page.getByRole('heading', { name: stage, exact: true }) })
       .getByRole('button', { name: 'Start submission', exact: true })
       .click(),
   );
+  // Creation resolves before invalidation/navigation and the first route chunk load.
+  await expect(page).toHaveURL((url) => url.pathname === `/submissions/${submission.id}`, {
+    timeout: 30_000,
+  });
+  await expect(page.getByRole('button', { name: /Upload revision/ })).toBeVisible({
+    timeout: 30_000,
+  });
+  return submission;
 }
 async function openSubmission(page: Page, title: string, stage: string) {
   await project(page, title);

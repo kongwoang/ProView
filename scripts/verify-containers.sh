@@ -62,7 +62,10 @@ compose up -d --wait api
 RUN_HTTP_TESTS=true pnpm --filter @proview/api exec node --import tsx --test test/review-http.test.ts
 compose restart api
 compose up -d --wait api
-pnpm exec playwright test --grep-invert '@lifecycle' --output=test-results/focused
+pnpm exec playwright test --grep-invert '@lifecycle|instructor saves and publishes a grade' --output=test-results/focused
+compose restart api
+compose up -d --wait api
+pnpm exec playwright test --grep 'instructor saves and publishes a grade' --output=test-results/focused-grading
 compose restart api
 compose up -d --wait api
 pnpm exec playwright test --grep '@lifecycle' --output=test-results/lifecycle

@@ -1,0 +1,21 @@
+{
+	auto_https off
+	admin off
+}
+
+http://:33080 {
+	bind 127.0.0.1
+	request_body {
+		max_size 21MB
+	}
+	@api path /api/*
+	handle @api {
+		reverse_proxy 127.0.0.1:33001 {
+			header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
+			header_up X-Forwarded-Proto https
+		}
+	}
+	handle {
+		reverse_proxy 127.0.0.1:33000
+	}
+}

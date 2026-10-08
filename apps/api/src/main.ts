@@ -61,7 +61,7 @@ async function bootstrap(): Promise<void> {
   if (process.env.OPENAPI_OUTPUT)
     await writeFile(process.env.OPENAPI_OUTPUT, JSON.stringify(document, null, 2));
   if (environment.ENABLE_API_DOCS) SwaggerModule.setup('api/docs', app, document);
-  await app.listen(environment.PORT, '0.0.0.0');
+  await app.listen(environment.PORT, environment.BIND_ADDRESS);
 }
 
 void bootstrap().catch(() => {

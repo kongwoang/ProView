@@ -2,6 +2,8 @@
 
 The implemented target is local production builds. No external deployment has been performed.
 
+A native deployment without root is also available; see [native-deployment.md](native-deployment.md). Internal server readiness does not establish public domain/TLS availability.
+
 1. Run the full clean database, HTTP and browser checks in `testing.md` on a disposable database and record the exact commit.
 2. Build and execute `infra/api.Dockerfile`, `infra/web.Dockerfile` and the private MinIO image on a Docker-capable host. Validate Compose configuration, healthchecks and proxy paths. Local native build results do not certify these images.
 3. Provision private PostgreSQL and storage; replace every example password/key and set `APP_ENV=production`, `NODE_ENV=production`, `COOKIE_SECURE=true`, HTTPS `FRONTEND_URL`, `SEED_DEMO=false`, `ENABLE_API_DOCS=false`. Give application storage credentials access only to its private bucket. Encode database URI credentials correctly.

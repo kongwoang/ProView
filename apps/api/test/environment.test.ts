@@ -38,3 +38,12 @@ test('S3 driver requires credentials and upload size is bounded', () => {
   assert.equal(environmentSchema.safeParse({ ...base, STORAGE_DRIVER: 's3' }).success, false);
   assert.equal(environmentSchema.safeParse({ ...base, MAX_UPLOAD_BYTES: '-1' }).success, false);
 });
+
+test('native deployment can bind only to loopback and rejects invalid addresses', () => {
+  assert.equal(environmentSchema.parse(base).BIND_ADDRESS, '0.0.0.0');
+  assert.equal(
+    environmentSchema.parse({ ...base, BIND_ADDRESS: '127.0.0.1' }).BIND_ADDRESS,
+    '127.0.0.1',
+  );
+  assert.equal(environmentSchema.safeParse({ ...base, BIND_ADDRESS: 'invalid' }).success, false);
+});
