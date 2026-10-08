@@ -5,6 +5,13 @@
 
 http://:33080 {
 	bind 127.0.0.1
+	@public_host host proview.hoangpc.io.vn
+	header @public_host >Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	@plain_http {
+		host proview.hoangpc.io.vn
+		header X-Forwarded-Proto http
+	}
+	redir @plain_http https://proview.hoangpc.io.vn{uri} 308
 	request_body {
 		max_size 21MB
 	}

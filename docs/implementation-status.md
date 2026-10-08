@@ -1,4 +1,4 @@
-# Trạng thái triển khai — 08/10/2026
+# Trạng thái triển khai — 09/10/2026
 
 Chỉ một agent thực hiện các gói tuần tự theo yêu cầu hiện tại. Các package là scope đối chiếu, không phải subagent đang chạy. `IMPLEMENTED` nghĩa là core flow đã tích hợp và có bằng chứng được liệt kê; không khẳng định mọi tiêu chí thiết kế hoặc mọi assertion AD/S đã PASS. Q00/Q01 còn mở cho các phần thiếu dưới đây.
 
@@ -37,7 +37,7 @@ Chỉ một agent thực hiện các gói tuần tự theo yêu cầu hiện t�
 
 ## Công việc operator trước deployment ngoài máy local
 
-Đã chuẩn bị deployment nội bộ trên host theo yêu cầu mới; DNS/Tunnel và domain-level TLS chưa kích hoạt. Secrets riêng đã tạo, populated recovery đã chạy trên môi trường test riêng của host; scheduling/retention, bản backup ngoài disk server và sustained load vẫn thuộc deployment checklist. Chỉ cần centralized rate limiting khi vận hành nhiều API replicas. Thủ tục và diễn tập phục hồi trong repository được mô tả ở `backup-recovery.md`.
+Deployment native trên host đã có Cloudflare DNS/Tunnel và HTTPS tại `proview.hoangpc.io.vn`. Admin thật đã tạo; login/refresh/logout, replay protection và source download qua domain thật đã kiểm tra. Backup đã xác minh và có bản sao riêng trên Mac; lịch backup/retention vẫn thủ công. Populated recovery và vòng đời học vụ đã chạy trên môi trường test riêng; PDF/workflow qua public domain và sustained load vẫn cần bằng chứng riêng. Chỉ cần centralized rate limiting khi vận hành nhiều API replicas. Xem [bằng chứng public deployment](evidence/public-deployment.md) và `backup-recovery.md`.
 
 Kết quả chạy thực và CI đã xác minh nằm ở [implementation-verification.md](evidence/implementation-verification.md); [testing.md](testing.md) chỉ tới suites. Không đóng Q00/Q01 chỉ vì core demo chạy được.
 
@@ -49,6 +49,6 @@ Follow-up UI clarification: preserve ProView navy/blue/purple while matching Ope
 
 ## Native server preparation requested on 2026-10-08
 
-ProView now runs internally on `ServerThayQuang` without root, with all application-owned files beneath `/media/data3/users/longnd/ProView`. Local Node/PostgreSQL/Caddy and a private tmux supervisor passed readiness, SSH-disconnect survival, child restart, graceful stop/start and empty-database backup/restore checks. See [native deployment](native-deployment.md) and the evidence document. Public Cloudflare DNS/Tunnel, admin provisioning, domain-level HTTPS/PDF/lifecycle validation and independent backup retention remain pending. Boot startup is manual to respect the directory-only requirement. The remaining contract and AD/S plan gaps are unchanged.
+The initial native preparation on `ServerThayQuang` kept all application-owned files beneath `/media/data3/users/longnd/ProView`, without root. Local Node/PostgreSQL/Caddy and a private tmux supervisor passed readiness, SSH-disconnect survival, child restart, graceful stop/start and empty-database backup/restore checks. Public Cloudflare DNS/Tunnel, administrator provisioning and HTTPS were completed afterward; see [native deployment](native-deployment.md) and [public evidence](evidence/public-deployment.md). Public PDF/lifecycle validation, scheduled independent backup retention and the remaining contract/AD/S plan gaps remain open. Boot startup is manual to respect the directory-only requirement.
 
-The user requested comprehensive verification before DNS. Actual host tests now include internal production-mode HTTPS/browser flows,62 proxy/security assertions, a disposable PostgreSQL crash/restart, log rotation,120 read requests at concurrency10 and recovery of39 tables/33 PDFs. Production data remained unchanged. [Pre-DNS report](evidence/pre-dns-server-verification.md) records exact results and gates; it does not certify public DNS/Tunnel or all remaining AD/S assertions. The current Source page points to the private repository, so accessible deployed-source distribution remains a public-release item.
+The user requested comprehensive verification before DNS. Actual host tests include internal production-mode HTTPS/browser flows,62 proxy/security assertions, a disposable PostgreSQL crash/restart, log rotation,120 read requests at concurrency10 and recovery of39 tables/33 PDFs. Production data remained unchanged during that rehearsal. [Pre-DNS report](evidence/pre-dns-server-verification.md) records those exact results. Public activation and accessible frontend source distribution are now recorded separately in [public deployment evidence](evidence/public-deployment.md); neither report certifies all remaining AD/S assertions.

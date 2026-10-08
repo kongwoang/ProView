@@ -1,5 +1,9 @@
 # Cloudflare preparation — 2026-10-08
 
+This is the preparation record before activation. Cloudflare DNS and the Tunnel
+were subsequently activated; see [public deployment evidence](public-deployment.md)
+for the current state.
+
 The authenticated Cloudflare dashboard shows `hoangpc.io.vn` on the Free plan,
 pending nameserver activation. Assigned nameservers are `etta.ns.cloudflare.com`
 and `frank.ns.cloudflare.com`. A direct parent-zone query to
