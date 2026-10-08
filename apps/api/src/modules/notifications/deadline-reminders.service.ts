@@ -59,9 +59,19 @@ export class DeadlineRemindersService implements OnModuleInit, OnModuleDestroy {
               select: { id: true, isActive: true },
             })
           : null;
+        const activeInstructor =
+          reviewer?.isActive &&
+          (await this.db.courseMembership.findFirst({
+            where: {
+              userId: reviewer.id,
+              offeringId: assignment.offeringId,
+              role: 'INSTRUCTOR',
+              endedAt: null,
+            },
+          }));
         const recipients =
           assignment.reviewerGroup?.members.map((member) => member.userId) ??
-          (reviewer?.isActive ? [reviewer.id] : []);
+          (activeInstructor && reviewer ? [reviewer.id] : []);
         if (!recipients.length) continue;
         await this.db.$transaction((tx) =>
           this.audit.notify(

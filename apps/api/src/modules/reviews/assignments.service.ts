@@ -47,7 +47,6 @@ export class AssignmentsService {
         ...(submissionId ? { submissionId } : {}),
         OR: [
           { offeringId: { in: staffOfferings.map((o) => o.offeringId) } },
-          { reviewerUserId: actor.id },
           { reviewerGroupId: { in: ownGroups.map((g) => g.groupId) } },
         ],
       },

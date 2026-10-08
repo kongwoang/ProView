@@ -72,7 +72,8 @@ export class PolicyService {
     if (!assignment || !['ASSIGNED', 'IN_PROGRESS', 'SUBMITTED'].includes(assignment.status))
       return false;
     return assignment.reviewerType === 'INSTRUCTOR'
-      ? assignment.reviewerUserId === actor.id
+      ? assignment.reviewerUserId === actor.id &&
+          (await this.isInstructor(actor, assignment.offeringId))
       : !!assignment.reviewerGroupId &&
           (await this.isGroupMember(actor, assignment.reviewerGroupId));
   }

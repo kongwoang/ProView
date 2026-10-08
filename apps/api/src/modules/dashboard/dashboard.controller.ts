@@ -34,7 +34,10 @@ export class DashboardController {
     ] = await Promise.all([
       this.db.reviewerAssignment.findMany({
         where: {
-          OR: [{ reviewerUserId: actor.id }, { reviewerGroupId: { in: groupIds } }],
+          OR: [
+            { reviewerUserId: actor.id, offeringId: { in: instructorIds } },
+            { reviewerGroupId: { in: groupIds } },
+          ],
           status: { in: ['ASSIGNED', 'IN_PROGRESS', 'COI_REQUESTED'] },
         },
         include: { submission: { include: { project: true, stage: true } } },

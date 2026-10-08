@@ -416,6 +416,15 @@ export class GradesService {
         !['REVIEW_COMPLETED', 'FINALIZED'].includes(current.status)
       )
         throw new ConflictException('Grade evidence has changed');
+      const logicalGrade = await tx.grade.findUniqueOrThrow({
+        where: { id: gradeId },
+        select: { draftRevisionId: true },
+      });
+      if (
+        logicalGrade.draftRevisionId !== draft.id ||
+        current.reviewCycle !== grade.submission.reviewCycle
+      )
+        throw new ConflictException('This grade draft has been replaced or the workflow reopened');
       if (!current.inputLockedAt)
         throw new ConflictException('Submission input must be locked before publishing');
       const offering = await tx.courseOffering.findUniqueOrThrow({

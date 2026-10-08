@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { config } from 'dotenv';
 import path from 'node:path';
@@ -454,6 +454,44 @@ test(
         (await db.auditLog.count({ where: { action: 'REVIEW_SUBMITTED', entityId: saved.id } })) ===
           1,
       );
+      const temporaryInstructor = await db.user.create({
+        data: {
+          username: `reviewer_${randomUUID().slice(0, 8)}`,
+          email: `reviewer-${randomUUID()}@example.test`,
+          displayName: 'Temporary reviewer instructor',
+          role: 'INSTRUCTOR',
+          passwordHash: instructor.passwordHash,
+        },
+      });
+      const temporaryMembership = await db.courseMembership.create({
+        data: { userId: temporaryInstructor.id, offeringId: offering.id, role: 'INSTRUCTOR' },
+      });
+      const instructorAssignment = await request(
+        staff,
+        '/reviewer-assignments',
+        'POST',
+        {
+          submissionId: submissions[2]!.id,
+          reviewerType: 'INSTRUCTOR',
+          reviewerUserId: temporaryInstructor.id,
+        },
+        201,
+      );
+      const temporaryToken = await login(temporaryInstructor.username);
+      await request(temporaryToken, `/reviewer-assignments/${instructorAssignment.id}/review`);
+      await db.courseMembership.update({
+        where: { id: temporaryMembership.id },
+        data: { endedAt: new Date() },
+      });
+      await request(
+        temporaryToken,
+        `/reviewer-assignments/${instructorAssignment.id}/review`,
+        'GET',
+        undefined,
+        404,
+      );
+      assert.equal((await request(temporaryToken, '/reviewer-assignments')).items.length, 0);
+      assert.equal((await request(temporaryToken, '/dashboard')).assignedReviews.length, 0);
       const prisma = db as PrismaService;
       const auditService = new AuditService(prisma);
       const reminder = new DeadlineRemindersService(prisma, auditService);
@@ -485,6 +523,56 @@ test(
         await db.auditLog.count({ where: { action: 'REBUTTAL_EXPIRED', entityId: rebuttal.id } }),
         1,
       );
+      async function waitForHttpLock(tx: Prisma.TransactionClient) {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          await tx.$executeRaw`SELECT pg_stat_clear_snapshot()`;
+          const rows = await tx.$queryRaw<
+            { count: bigint }[]
+          >`SELECT count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`;
+          if (Number(rows[0]!.count) > 0) return;
+          await pause(20);
+        }
+        assert.fail('The real HTTP operation must be waiting for the submission lock');
+      }
+      const publishTarget = await db.submission.findUniqueOrThrow({
+        where: { id: current.id },
+        include: { stage: true },
+      });
+      const pendingGrade = await request(staff, `/submissions/${publishTarget.id}/grade`, 'PUT', {
+        revision: 0,
+        submissionVersionId: publishTarget.submittedVersionId,
+        rubricRevisionId: publishTarget.stage.rubricRevisionId,
+        criterionScores: [{ criterionId: criterion.id, score: 8, comment: 'Exact evidence' }],
+      });
+      let publishRequest: Promise<JsonRecord> | undefined;
+      await db.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "Submission" WHERE id = ${publishTarget.id}::uuid FOR UPDATE`;
+          publishRequest = request(
+            staff,
+            `/grades/${pendingGrade.id}/publish`,
+            'POST',
+            { revision: pendingGrade.draft.revision, gradeRevisionId: pendingGrade.draft.id },
+            409,
+          );
+          void publishRequest.catch(() => undefined);
+          await waitForHttpLock(tx);
+          await tx.grade.update({
+            where: { id: pendingGrade.id },
+            data: { draftRevisionId: null },
+          });
+          await tx.submission.update({
+            where: { id: publishTarget.id },
+            data: { reviewCycle: { increment: 1 }, revision: { increment: 1 } },
+          });
+        },
+        { timeout: 10_000 },
+      );
+      await publishRequest;
+      assert.equal(
+        (await db.gradeRevision.findUniqueOrThrow({ where: { id: pendingGrade.draft.id } })).status,
+        'DRAFT',
+      );
       // Hold an actual row lock, let HTTP grading wait, then reopen the evidence before it acquires the lock.
       const gradeTarget = await db.submission.findUniqueOrThrow({
         where: { id: submissions[1]!.id },
@@ -507,23 +595,7 @@ test(
             409,
           );
           void gradeRequest.catch(() => undefined);
-          let waiting = false;
-          for (let attempt = 0; attempt < 100; attempt++) {
-            await tx.$executeRaw`SELECT pg_stat_clear_snapshot()`;
-            const rows = await tx.$queryRaw<
-              { count: bigint }[]
-            >`SELECT count(*)::bigint AS count FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%'`;
-            if (Number(rows[0]!.count) > 0) {
-              waiting = true;
-              break;
-            }
-            await pause(20);
-          }
-          assert.equal(
-            waiting,
-            true,
-            'The real HTTP grade save must be waiting for the submission lock',
-          );
+          await waitForHttpLock(tx);
           await tx.submission.update({
             where: { id: gradeTarget.id },
             data: {

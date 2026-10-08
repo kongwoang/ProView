@@ -29,6 +29,42 @@ export class ReviewsService {
     private readonly audit: AuditService,
   ) {}
 
+  private async ownerTx(
+    tx: Prisma.TransactionClient,
+    actor: Actor,
+    assignment: {
+      reviewerType: string;
+      reviewerUserId: string | null;
+      reviewerGroupId: string | null;
+      offeringId: string;
+    },
+  ) {
+    if (assignment.reviewerType === 'INSTRUCTOR')
+      return (
+        assignment.reviewerUserId === actor.id &&
+        !!(await tx.courseMembership.findFirst({
+          where: {
+            userId: actor.id,
+            offeringId: assignment.offeringId,
+            role: 'INSTRUCTOR',
+            endedAt: null,
+            user: { isActive: true },
+          },
+        }))
+      );
+    return (
+      !!assignment.reviewerGroupId &&
+      !!(await tx.groupMember.findFirst({
+        where: {
+          groupId: assignment.reviewerGroupId,
+          userId: actor.id,
+          leftAt: null,
+          membership: { endedAt: null, user: { isActive: true } },
+        },
+      }))
+    );
+  }
+
   private async assignment(actor: Actor, id: string, forWrite = false) {
     const a = await this.db.reviewerAssignment.findUnique({
       where: { id },
@@ -240,25 +276,7 @@ export class ReviewsService {
           effectiveDeadline <= new Date()
         )
           throw new ConflictException('Review window is closed');
-        const isOwner =
-          current.reviewerType === 'INSTRUCTOR'
-            ? current.reviewerUserId === actor.id &&
-              !!(await tx.courseMembership.findFirst({
-                where: {
-                  offeringId: current.offeringId,
-                  userId: actor.id,
-                  role: 'INSTRUCTOR',
-                  endedAt: null,
-                },
-              }))
-            : !!(await tx.groupMember.findFirst({
-                where: {
-                  groupId: current.reviewerGroupId!,
-                  userId: actor.id,
-                  leftAt: null,
-                  membership: { endedAt: null },
-                },
-              }));
+        const isOwner = await this.ownerTx(tx, actor, current);
         if (!isOwner) throw new NotFoundException('Assignment not found');
         let review = current.review;
         if (!review)
@@ -346,6 +364,8 @@ export class ReviewsService {
           },
         });
         const draft = current.draftRevision;
+        if (!(await this.ownerTx(tx, actor, current.assignment)))
+          throw new NotFoundException('Review not found');
         if (
           !draft ||
           draft.revision !== revision ||
