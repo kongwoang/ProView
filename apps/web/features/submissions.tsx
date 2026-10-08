@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useSession } from '@/providers/session-provider';
 import type { PageResult } from '@/lib/api/contracts';
@@ -71,7 +70,6 @@ export function ProjectsPage() {
 
 export function ProjectPage({ id }: { id: string }) {
   const { api, user } = useSession();
-  const router = useRouter();
   const action = useAction();
   const query = useResource<Project>('project', `/projects/${id}`);
   return (
@@ -128,7 +126,9 @@ export function ProjectPage({ id }: { id: string }) {
                               'Submission created.',
                             )
                             .then((result) => {
-                              if (result) router.push(`/submissions/${result.id}`);
+                              // A new record needs a fresh document; a stalled RSC response must
+                              // not strand the user on the project after a successful creation.
+                              if (result) window.location.assign(`/submissions/${result.id}`);
                             });
                         }}
                       >

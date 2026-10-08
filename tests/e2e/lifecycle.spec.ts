@@ -54,21 +54,31 @@ async function project(page: Page, title: string) {
 }
 async function startSubmission(page: Page, title: string, stage: string) {
   await project(page, title);
-  const submission = await action(page, '/submissions', 'POST', () =>
-    page
-      .locator('.list-row')
-      .filter({ has: page.getByRole('heading', { name: stage, exact: true }) })
-      .getByRole('button', { name: 'Start submission', exact: true })
-      .click(),
-  );
-  // Creation resolves before invalidation/navigation and the first route chunk load.
-  await expect(page).toHaveURL((url) => url.pathname === `/submissions/${submission.id}`, {
-    timeout: 30_000,
-  });
-  await expect(page.getByRole('button', { name: /Upload revision/ })).toBeVisible({
-    timeout: 30_000,
-  });
-  return submission;
+  // Reproduce the production-build failure: the cold record's RSC request can
+  // receive headers but never finish. Creation must still open the submission.
+  const recordStream = (url: URL) =>
+    url.pathname.startsWith('/submissions/') && url.searchParams.has('_rsc');
+  const stalledStream = () => new Promise<void>(() => {});
+  await page.route(recordStream, stalledStream);
+  try {
+    const submission = await action(page, '/submissions', 'POST', () =>
+      page
+        .locator('.list-row')
+        .filter({ has: page.getByRole('heading', { name: stage, exact: true }) })
+        .getByRole('button', { name: 'Start submission', exact: true })
+        .click(),
+    );
+    // Creation resolves before invalidation/navigation and the first route chunk load.
+    await expect(page).toHaveURL((url) => url.pathname === `/submissions/${submission.id}`, {
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('button', { name: /Upload revision/ })).toBeVisible({
+      timeout: 30_000,
+    });
+    return submission;
+  } finally {
+    await page.unroute(recordStream, stalledStream);
+  }
 }
 async function openSubmission(page: Page, title: string, stage: string) {
   await project(page, title);
@@ -477,10 +487,21 @@ test('@lifecycle instructor setup → proposal versions → assignment/COI → a
       },
     );
     expect([403, 404]).toContain(proposalFile.status());
+    // Document navigation rotates the refresh session. Use the current session
+    // so this assertion proves authorization denial rather than token expiry.
+    const renewed = await students[1].context.request.post('/api/v1/auth/refresh', {
+      headers: { Origin: baseURL! },
+    });
+    expect(renewed.status()).toBe(200);
+    const currentToken = (await renewed.json()).accessToken as string;
+    const identity = await students[1].context.request.get('/api/v1/me', {
+      headers: { Authorization: `Bearer ${currentToken}` },
+    });
+    expect(identity.status()).toBe(200);
     const unauthorized = await students[1].context.request.get(
       `/api/v1/versions/${finalVersion.id}/file`,
       {
-        headers: { Authorization: `Bearer ${students[1].token}` },
+        headers: { Authorization: `Bearer ${currentToken}` },
       },
     );
     expect([403, 404]).toContain(unauthorized.status());
