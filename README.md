@@ -45,4 +45,4 @@ See [testing](docs/testing.md) for PostgreSQL, HTTP and Chromium commands; [veri
 - [Implementation plan](docs/implementation-plan.md), [agent tasks](docs/agent-tasks.md), [domain decisions](docs/domain-decisions.md), [requirements matrix](docs/requirements-matrix.md).
 - Original [specification](docs/specifications/01-proview-original.txt) and [frontend override](docs/specifications/02-openreview-override.txt).
 
-Docker Compose includes PostgreSQL, private MinIO, API, web and Nginx. External hosting is outside the current scope. Container execution and deployment-specific evidence must be verified before release; local production build success alone does not prove the containers.
+Docker Compose includes PostgreSQL, private MinIO, API, web and Nginx. External hosting is outside the current scope. Production containers and private S3 storage pass the disposable GitHub Actions verification; see the exact run in the evidence document. Deployment-specific credentials, TLS, backup/restore and load checks remain required before an external release.

@@ -62,7 +62,10 @@ compose up -d --wait api
 RUN_HTTP_TESTS=true pnpm --filter @proview/api exec node --import tsx --test test/review-http.test.ts
 compose restart api
 compose up -d --wait api
-pnpm exec playwright test
+pnpm exec playwright test --grep-invert '@lifecycle'
+compose restart api
+compose up -d --wait api
+pnpm exec playwright test --grep '@lifecycle'
 PROVIEW_VERIFY_PRIVATE_STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:9000/proview-private/demo/active-group-1-submission-1-v1.pdf)
 [[ "$PROVIEW_VERIFY_PRIVATE_STATUS" == 403 ]]
 echo 'PASS production API/web/PostgreSQL/Nginx/MinIO containers, S3 PDFs and denied anonymous object access.'

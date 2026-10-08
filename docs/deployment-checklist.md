@@ -12,4 +12,4 @@ The implemented target is local production builds. No external deployment has be
 8. Configure centralized rate limits before multiple API replicas; the current login/refresh limiter is process-local. Review resource limits and background-worker concurrency under representative load.
 9. Publish the applicable modified frontend source/license information for any network deployment as required by the retained upstream license. No release authorization is implied by this checklist.
 
-Remaining production work is explicit: Docker runtime verification, S3/MinIO runtime verification, TLS deployment, distributed rate-limit configuration, backup/restore exercise and representative load tests. These do not prevent an opt-in local demonstration.
+Production containers and S3/MinIO passed the [28377f3 CI run](https://github.com/kongwoang/ProView/actions/runs/37718123514) through Nginx on disposable infrastructure. Remaining production work is explicit: TLS deployment, distributed rate-limit configuration, backup/restore exercise and representative load tests. These do not prevent an opt-in local demonstration.

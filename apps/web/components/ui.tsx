@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { cloneElement, isValidElement, useId, type ReactNode } from 'react';
 import { ApiError } from '@/lib/api/client';
 import Alert from './upstream/Alert';
 
@@ -121,11 +121,18 @@ export function Field({
   children: ReactNode;
   help?: string;
 }) {
+  const generatedId = useId();
+  const id = isValidElement<{ id?: string }>(children)
+    ? (children.props.id ?? generatedId)
+    : generatedId;
+  const control = isValidElement<{ id?: string }>(children)
+    ? cloneElement(children, { id })
+    : children;
   return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      {control}
       {help && <small className="muted">{help}</small>}
-    </label>
+    </div>
   );
 }

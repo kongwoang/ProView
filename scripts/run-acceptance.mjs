@@ -99,7 +99,7 @@ await withApi('reviews', () =>
     { RUN_HTTP_TESTS: 'true' },
   ),
 );
-await withApi('browser', async () => {
+async function browserChecks(args) {
   const webLog = createWriteStream('test-results/web.log');
   const web = spawn(process.execPath, ['scripts/start-web.mjs'], {
     env: { ...process.env, NODE_ENV: 'production' },
@@ -118,10 +118,12 @@ await withApi('browser', async () => {
       await setTimeout(100);
     }
     if (!ready) throw new Error('Web readiness timeout');
-    await execute('pnpm', ['exec', 'playwright', 'test']);
+    await execute('pnpm', ['exec', 'playwright', 'test', ...args]);
   } finally {
     await stop(web);
     webLog.end();
   }
-});
+}
+await withApi('browser', () => browserChecks(['--grep-invert', '@lifecycle']));
+await withApi('browser', () => browserChecks(['--grep', '@lifecycle']));
 console.log('PASS selected isolated acceptance suites.');

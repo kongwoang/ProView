@@ -55,7 +55,12 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   await expect(
     page.getByRole('heading', { name: 'Campus Resource Booking', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('Published grade:')).toBeVisible();
+  await expect(
+    page
+      .locator('.project-card')
+      .filter({ has: page.getByRole('heading', { name: 'Campus Resource Booking', exact: true }) })
+      .getByText('Published grade:'),
+  ).toBeVisible();
   await page.goto('/notifications');
   await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
