@@ -1,0 +1,154 @@
+
+> openreview-web@1.15.38 unit-test
+> jest --runInBand
+
+FAIL unitTests/Donate.test.js
+  ● Donation Page › render all required buttons
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › update selection in button text
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › handle max amount (custom amount)
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › post correct amount (no user)
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › post correct amount (with user)
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+
+Summary of all failing tests
+FAIL unitTests/Donate.test.js
+  ● Donation Page › render all required buttons
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › update selection in button text
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › handle max amount (custom amount)
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › post correct amount (no user)
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+  ● Donation Page › post correct amount (with user)
+
+    TypeError: Cannot delete property 'location' of #<Window>
+
+      19 |   global.promptMessage = jest.fn()
+      20 |   global.promptError = jest.fn()
+    > 21 |   delete window.location
+         |   ^
+      22 |   window.location = { href: '' }
+      23 |   mockedUser = {}
+      24 | })
+
+      at Object.<anonymous> (unitTests/Donate.test.js:21:3)
+
+
+Test Suites: 1 failed, 86 passed, 87 total
+Tests:       5 failed, 3 skipped, 808 passed, 816 total
+Snapshots:   0 total
+Time:        27.419 s
+Ran all test suites.

@@ -50,3 +50,26 @@ jobs:
             test-results
             playwright-report
             apps/api/prisma/migrations
+
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.34.6 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24.21.0, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: DATABASE_URL=postgresql://build:build@localhost:5432/build pnpm db:generate
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: bash scripts/verify-containers.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-verification
+          path: |
+            test-results
+            playwright-report

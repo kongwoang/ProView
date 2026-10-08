@@ -228,6 +228,7 @@ assert.equal(check.status, 'PENDING');
 assertions++;
 const context = await api(`/submissions/${submission.id}/grading-context`, instructor);
 gradeEvidence = {
+  reviewCycle: context.submission.reviewCycle,
   submissionVersionId: context.submission.submittedVersionId,
   rubricRevisionId: context.rubric.id,
 };
@@ -236,6 +237,13 @@ await api(
   instructor,
   'PUT',
   { revision: 0, submissionVersionId: firstVersionId, criterionScores: [] },
+  409,
+);
+await api(
+  `/submissions/${submission.id}/grade`,
+  instructor,
+  'PUT',
+  { revision: 0, reviewCycle: context.submission.reviewCycle - 1, criterionScores: [] },
   409,
 );
 const scores = context.rubric.criteria.map((criterion) => ({

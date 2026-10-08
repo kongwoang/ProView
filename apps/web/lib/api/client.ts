@@ -17,6 +17,7 @@ type SessionListener = (session: AuthSession | null) => void;
 /** Each browser provider owns one client. No server singleton or persisted token. */
 export class ApiClient {
   private accessToken: string | null = null;
+  private actorKey: string | null = null;
   private refreshRequest: Promise<AuthSession> | null = null;
   private epoch = 0;
   private listener: SessionListener = () => {};
@@ -30,6 +31,7 @@ export class ApiClient {
   setSession(session: AuthSession | null) {
     this.epoch += 1;
     this.accessToken = session?.accessToken ?? null;
+    this.actorKey = session ? `${session.user.id}:${session.user.role}` : null;
     this.listener(session);
   }
 
@@ -61,6 +63,15 @@ export class ApiClient {
           code: 'SESSION_CHANGED',
           message: 'Your session has changed. Please sign in again.',
         });
+      const actorKey = `${session.user.id}:${session.user.role}`;
+      if (this.actorKey !== null && this.actorKey !== actorKey) {
+        this.setSession(session);
+        throw new ApiError(401, {
+          code: 'SESSION_CHANGED',
+          message: 'Your account has changed. Please reload this page before continuing.',
+        });
+      }
+      this.actorKey = actorKey;
       this.accessToken = session.accessToken;
       this.listener(session);
       return session;

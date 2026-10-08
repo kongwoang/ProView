@@ -27,7 +27,7 @@ async function request(
   const response = await fetch(`${base}${url}`, {
     method,
     headers: {
-      Origin: 'http://localhost:3000',
+      Origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
@@ -540,6 +540,7 @@ test(
       });
       const pendingGrade = await request(staff, `/submissions/${publishTarget.id}/grade`, 'PUT', {
         revision: 0,
+        reviewCycle: publishTarget.reviewCycle,
         submissionVersionId: publishTarget.submittedVersionId,
         rubricRevisionId: publishTarget.stage.rubricRevisionId,
         criterionScores: [{ criterionId: criterion.id, score: 8, comment: 'Exact evidence' }],
@@ -588,6 +589,7 @@ test(
             'PUT',
             {
               revision: 0,
+              reviewCycle: gradeTarget.reviewCycle,
               submissionVersionId: gradeTarget.submittedVersionId,
               rubricRevisionId: gradeTarget.stage.rubricRevisionId,
               criterionScores: [],

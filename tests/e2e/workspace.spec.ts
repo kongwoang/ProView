@@ -48,6 +48,14 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   await page.goto(`/submissions/${demoId('active-group-1-submission-1')}`);
   await expect(page.getByRole('tab', { name: /Document/ })).toBeVisible();
   await expect(page.locator('.pdf-viewer')).toBeVisible();
+  await page.goto('/profile');
+  await expect(
+    page.getByRole('heading', { name: 'Your academic history', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Campus Resource Booking', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Published grade:')).toBeVisible();
   await page.goto('/notifications');
   await expect(page.getByRole('heading', { name: 'Notifications' })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();

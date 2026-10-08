@@ -29,3 +29,5 @@ Chromium exercises the production frontend against the real API: in-memory sessi
 Assignment-engine tests compare deterministic results to an independent exhaustive oracle for small graphs. Scoring tests cover mixed criterion ranges, missing required evidence, endpoints and invalid ranges. Client unit tests cover refresh singleflight, stale-account responses, logout races, no-store/token-URL rules and structured409 errors.
 
 See `evidence/implementation-verification.md` for executed checks. The test suite does not establish full browser/assistive-technology compatibility, malicious-PDF scanning, distributed rate-limit behavior, disaster recovery or external-service performance.
+
+Container/S3 verification runs `bash scripts/verify-containers.sh` from a clean checkout without `.env`, with Docker and Chromium installed. It creates a uniquely named disposable Compose project, builds the actual images, migrates/seeds PostgreSQL and private MinIO, runs real HTTP/browser tests through Nginx, denies anonymous object reads and removes only its own test volumes afterward. GitHub's `containers` job runs this independently of native verification.

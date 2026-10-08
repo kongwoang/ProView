@@ -10,7 +10,9 @@
             "description": ""
           }
         },
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
       }
     },
     "/api/v1/health/ready": {
@@ -22,7 +24,9 @@
             "description": ""
           }
         },
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
       }
     },
     "/api/v1/auth/login": {
@@ -44,7 +48,9 @@
             "description": ""
           }
         },
-        "tags": ["Authentication"]
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/v1/auth/refresh": {
@@ -56,7 +62,9 @@
             "description": ""
           }
         },
-        "tags": ["Authentication"]
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/v1/auth/logout": {
@@ -68,7 +76,9 @@
             "description": ""
           }
         },
-        "tags": ["Authentication"]
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/v1/me": {
@@ -85,7 +95,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Profile"]
+        "tags": [
+          "Profile"
+        ]
       },
       "patch": {
         "operationId": "ProfileController_update",
@@ -110,7 +122,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Profile"]
+        "tags": [
+          "Profile"
+        ]
       }
     },
     "/api/v1/me/password": {
@@ -137,7 +151,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Profile"]
+        "tags": [
+          "Profile"
+        ]
       }
     },
     "/api/v1/notifications": {
@@ -185,7 +201,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"]
+        "tags": [
+          "Notifications"
+        ]
       }
     },
     "/api/v1/notifications/{id}/read": {
@@ -211,7 +229,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"]
+        "tags": [
+          "Notifications"
+        ]
       },
       "post": {
         "operationId": "NotificationsController_readPost",
@@ -235,7 +255,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"]
+        "tags": [
+          "Notifications"
+        ]
       }
     },
     "/api/v1/notifications/read-all": {
@@ -252,7 +274,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Notifications"]
+        "tags": [
+          "Notifications"
+        ]
       }
     },
     "/api/v1/users": {
@@ -300,7 +324,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Administration"]
+        "tags": [
+          "Administration"
+        ]
       },
       "post": {
         "operationId": "AdminController_create",
@@ -325,7 +351,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Administration"]
+        "tags": [
+          "Administration"
+        ]
       }
     },
     "/api/v1/users/{id}": {
@@ -361,7 +389,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Administration"]
+        "tags": [
+          "Administration"
+        ]
       }
     },
     "/api/v1/users/{id}/password-reset": {
@@ -397,7 +427,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Administration"]
+        "tags": [
+          "Administration"
+        ]
       }
     },
     "/api/v1/audit-logs": {
@@ -490,7 +522,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Administration"]
+        "tags": [
+          "Administration"
+        ]
       }
     },
     "/api/v1/similarity-checks": {
@@ -533,7 +567,13 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["PENDING", "SUBMITTED_EXTERNALLY", "COMPLETED", "FAILED", "WAIVED"]
+              "enum": [
+                "PENDING",
+                "SUBMITTED_EXTERNALLY",
+                "COMPLETED",
+                "FAILED",
+                "WAIVED"
+              ]
             }
           }
         ],
@@ -547,7 +587,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/mark-external": {
@@ -583,7 +625,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/complete": {
@@ -619,7 +663,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/fail": {
@@ -655,7 +701,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/waive": {
@@ -691,7 +739,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/retry": {
@@ -727,7 +777,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/result-files": {
@@ -749,7 +801,9 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file"],
+                "required": [
+                  "file"
+                ],
                 "properties": {
                   "file": {
                     "type": "string",
@@ -770,7 +824,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/similarity-checks/{id}/result-files/{fileId}/file": {
@@ -804,7 +860,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Textual similarity"]
+        "tags": [
+          "Textual similarity"
+        ]
       }
     },
     "/api/v1/submissions/{id}/grade": {
@@ -830,7 +888,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Grading"]
+        "tags": [
+          "Grading"
+        ]
       },
       "put": {
         "operationId": "GradesController_save",
@@ -864,7 +924,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Grading"]
+        "tags": [
+          "Grading"
+        ]
       }
     },
     "/api/v1/submissions/{id}/grading-context": {
@@ -890,7 +952,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Grading"]
+        "tags": [
+          "Grading"
+        ]
       }
     },
     "/api/v1/grades/{id}/publish": {
@@ -926,7 +990,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Grading"]
+        "tags": [
+          "Grading"
+        ]
       }
     },
     "/api/v1/archive/own": {
@@ -1001,7 +1067,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/archive/references": {
@@ -1076,7 +1144,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/archive/manage": {
@@ -1151,7 +1221,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/archive/publications": {
@@ -1178,7 +1250,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/archive/publications/{id}/revoke": {
@@ -1214,7 +1288,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/archive/publications/{id}/file": {
@@ -1240,7 +1316,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/archive/publications/{id}/download": {
@@ -1266,7 +1344,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Archive"]
+        "tags": [
+          "Archive"
+        ]
       }
     },
     "/api/v1/dashboard": {
@@ -1283,7 +1363,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Dashboard"]
+        "tags": [
+          "Dashboard"
+        ]
       }
     },
     "/api/v1/courses": {
@@ -1331,7 +1413,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "post": {
         "operationId": "CoursesController_course",
@@ -1356,7 +1440,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/courses/{id}": {
@@ -1392,7 +1478,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "delete": {
         "operationId": "CoursesController_deactivateCourse",
@@ -1416,7 +1504,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings": {
@@ -1464,7 +1554,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "post": {
         "operationId": "CoursesController_create",
@@ -1489,7 +1581,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}": {
@@ -1515,7 +1609,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "patch": {
         "operationId": "CoursesController_patch",
@@ -1549,7 +1645,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/roster": {
@@ -1575,7 +1673,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "post": {
         "operationId": "CoursesController_addMember",
@@ -1609,7 +1709,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/roster/{memberId}": {
@@ -1643,7 +1745,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/roster/preview": {
@@ -1679,7 +1783,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/roster/import": {
@@ -1715,7 +1821,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/groups": {
@@ -1741,7 +1849,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "post": {
         "operationId": "CoursesController_createGroup",
@@ -1775,7 +1885,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/groups/{id}": {
@@ -1811,7 +1923,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/rubrics": {
@@ -1837,7 +1951,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       },
       "post": {
         "operationId": "CoursesController_rubric",
@@ -1871,7 +1987,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/rubrics/{id}/revisions": {
@@ -1907,7 +2025,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/stages": {
@@ -1943,7 +2063,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/stages/{id}": {
@@ -1979,7 +2101,9 @@
             "bearer": []
           }
         ],
-        "tags": ["courses"]
+        "tags": [
+          "courses"
+        ]
       }
     },
     "/api/v1/offerings/{id}/submissions": {
@@ -2035,7 +2159,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/projects/mine": {
@@ -2052,7 +2178,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/projects/{id}": {
@@ -2078,7 +2206,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/projects/{id}/submissions": {
@@ -2114,7 +2244,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/submissions/{id}": {
@@ -2140,7 +2272,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/submissions/{id}/versions": {
@@ -2162,7 +2296,9 @@
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file"],
+                "required": [
+                  "file"
+                ],
                 "properties": {
                   "file": {
                     "type": "string",
@@ -2187,7 +2323,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/submissions/{id}/submit": {
@@ -2223,7 +2361,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/submissions/{id}/finalize-input": {
@@ -2259,7 +2399,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/submissions/{id}/reopen": {
@@ -2295,7 +2437,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/versions/{id}/file": {
@@ -2321,7 +2465,9 @@
             "bearer": []
           }
         ],
-        "tags": ["submissions"]
+        "tags": [
+          "submissions"
+        ]
       }
     },
     "/api/v1/reviewer-assignments": {
@@ -2355,7 +2501,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       },
       "post": {
         "operationId": "ReviewsController_manual",
@@ -2380,7 +2528,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/offerings/{id}/assignment-plans": {
@@ -2416,7 +2566,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/assignment-plans/{id}/apply": {
@@ -2442,7 +2594,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviewer-assignments/{id}/cancel": {
@@ -2478,7 +2632,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviewer-assignments/{id}/conflicts": {
@@ -2514,7 +2670,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/conflicts/{id}/decision": {
@@ -2550,7 +2708,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviewer-assignments/{id}/replacement": {
@@ -2586,7 +2746,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviewer-assignments/{id}/review": {
@@ -2612,7 +2774,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       },
       "put": {
         "operationId": "ReviewsController_save",
@@ -2646,7 +2810,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviews/{id}/submit": {
@@ -2682,7 +2848,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviews/{id}/revisions": {
@@ -2708,7 +2876,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/reviews/{id}/correction-authorizations": {
@@ -2744,7 +2914,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/submissions/{id}/reviews": {
@@ -2770,7 +2942,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/submissions/{id}/reviews/release": {
@@ -2806,7 +2980,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/submissions/{id}/rebuttal": {
@@ -2832,7 +3008,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       },
       "put": {
         "operationId": "ReviewsController_saveRebuttal",
@@ -2866,7 +3044,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/rebuttals/{id}/finalize": {
@@ -2902,7 +3082,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/rebuttals/{id}/reopen": {
@@ -2938,7 +3120,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     },
     "/api/v1/submissions/{id}/discussions": {
@@ -2964,7 +3148,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       },
       "post": {
         "operationId": "ReviewsController_discuss",
@@ -2998,7 +3184,9 @@
             "bearer": []
           }
         ],
-        "tags": ["Review workflow"]
+        "tags": [
+          "Review workflow"
+        ]
       }
     }
   },
@@ -3033,7 +3221,10 @@
             "maxLength": 256
           }
         },
-        "required": ["identifier", "password"]
+        "required": [
+          "identifier",
+          "password"
+        ]
       },
       "UpdateProfileDto": {
         "type": "object",
@@ -3064,7 +3255,10 @@
             "maxLength": 256
           }
         },
-        "required": ["currentPassword", "newPassword"]
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
       },
       "CreateUserDto": {
         "type": "object",
@@ -3091,10 +3285,20 @@
           },
           "role": {
             "type": "string",
-            "enum": ["ADMIN", "INSTRUCTOR", "STUDENT"]
+            "enum": [
+              "ADMIN",
+              "INSTRUCTOR",
+              "STUDENT"
+            ]
           }
         },
-        "required": ["email", "username", "displayName", "password", "role"]
+        "required": [
+          "email",
+          "username",
+          "displayName",
+          "password",
+          "role"
+        ]
       },
       "UpdateUserDto": {
         "type": "object",
@@ -3114,7 +3318,11 @@
           },
           "role": {
             "type": "string",
-            "enum": ["ADMIN", "INSTRUCTOR", "STUDENT"]
+            "enum": [
+              "ADMIN",
+              "INSTRUCTOR",
+              "STUDENT"
+            ]
           }
         }
       },
@@ -3127,7 +3335,9 @@
             "maxLength": 256
           }
         },
-        "required": ["newPassword"]
+        "required": [
+          "newPassword"
+        ]
       },
       "SimilarityUpdateDto": {
         "type": "object",
@@ -3154,7 +3364,9 @@
             "maxLength": 2000
           }
         },
-        "required": ["revision"]
+        "required": [
+          "revision"
+        ]
       },
       "CriterionScoreDto": {
         "type": "object",
@@ -3171,11 +3383,18 @@
             "maxLength": 5000
           }
         },
-        "required": ["criterionId", "score"]
+        "required": [
+          "criterionId",
+          "score"
+        ]
       },
       "SaveGradeDto": {
         "type": "object",
         "properties": {
+          "reviewCycle": {
+            "type": "number",
+            "minimum": 1
+          },
           "submissionVersionId": {
             "type": "string",
             "format": "uuid"
@@ -3213,7 +3432,13 @@
             "maxLength": 2000
           }
         },
-        "required": ["submissionVersionId", "rubricRevisionId", "revision", "criterionScores"]
+        "required": [
+          "reviewCycle",
+          "submissionVersionId",
+          "rubricRevisionId",
+          "revision",
+          "criterionScores"
+        ]
       },
       "PublishGradeDto": {
         "type": "object",
@@ -3227,7 +3452,10 @@
             "minimum": 0
           }
         },
-        "required": ["gradeRevisionId", "revision"]
+        "required": [
+          "gradeRevisionId",
+          "revision"
+        ]
       },
       "ApproveArchiveDto": {
         "type": "object",
@@ -3237,7 +3465,9 @@
             "format": "uuid"
           }
         },
-        "required": ["submissionVersionId"]
+        "required": [
+          "submissionVersionId"
+        ]
       },
       "RevokeArchiveDto": {
         "type": "object",
@@ -3248,7 +3478,9 @@
             "maxLength": 2000
           }
         },
-        "required": ["reason"]
+        "required": [
+          "reason"
+        ]
       },
       "CourseDto": {
         "type": "object",
@@ -3268,7 +3500,10 @@
             "maxLength": 10000
           }
         },
-        "required": ["code", "title"]
+        "required": [
+          "code",
+          "title"
+        ]
       },
       "CoursePatchDto": {
         "type": "object",
@@ -3323,7 +3558,10 @@
           },
           "anonymityMode": {
             "type": "string",
-            "enum": ["NAMED", "ANONYMOUS_TO_AUTHORS"]
+            "enum": [
+              "NAMED",
+              "ANONYMOUS_TO_AUTHORS"
+            ]
           },
           "copyFromOfferingId": {
             "type": "string",
@@ -3338,7 +3576,13 @@
             }
           }
         },
-        "required": ["courseId", "semester", "academicYear", "termStartAt", "termEndAt"]
+        "required": [
+          "courseId",
+          "semester",
+          "academicYear",
+          "termStartAt",
+          "termEndAt"
+        ]
       },
       "OfferingPatchDto": {
         "type": "object",
@@ -3349,18 +3593,28 @@
           },
           "status": {
             "type": "string",
-            "enum": ["DRAFT", "ACTIVE", "CLOSED", "ARCHIVED"]
+            "enum": [
+              "DRAFT",
+              "ACTIVE",
+              "CLOSED",
+              "ARCHIVED"
+            ]
           },
           "anonymityMode": {
             "type": "string",
-            "enum": ["NAMED", "ANONYMOUS_TO_AUTHORS"]
+            "enum": [
+              "NAMED",
+              "ANONYMOUS_TO_AUTHORS"
+            ]
           },
           "timezone": {
             "type": "string",
             "maxLength": 80
           }
         },
-        "required": ["revision"]
+        "required": [
+          "revision"
+        ]
       },
       "MembershipDto": {
         "type": "object",
@@ -3371,10 +3625,15 @@
           },
           "role": {
             "type": "string",
-            "enum": ["INSTRUCTOR", "STUDENT"]
+            "enum": [
+              "INSTRUCTOR",
+              "STUDENT"
+            ]
           }
         },
-        "required": ["email"]
+        "required": [
+          "email"
+        ]
       },
       "CsvDto": {
         "type": "object",
@@ -3385,7 +3644,9 @@
             "maxLength": 200000
           }
         },
-        "required": ["csv"]
+        "required": [
+          "csv"
+        ]
       },
       "ImportDto": {
         "type": "object",
@@ -3395,7 +3656,9 @@
             "format": "uuid"
           }
         },
-        "required": ["previewId"]
+        "required": [
+          "previewId"
+        ]
       },
       "GroupDto": {
         "type": "object",
@@ -3424,7 +3687,11 @@
             }
           }
         },
-        "required": ["name", "title", "memberIds"]
+        "required": [
+          "name",
+          "title",
+          "memberIds"
+        ]
       },
       "GroupPatchDto": {
         "type": "object",
@@ -3457,7 +3724,9 @@
             }
           }
         },
-        "required": ["revision"]
+        "required": [
+          "revision"
+        ]
       },
       "CriterionDto": {
         "type": "object",
@@ -3493,7 +3762,12 @@
             "type": "boolean"
           }
         },
-        "required": ["title", "weight", "scoreMin", "scoreMax"]
+        "required": [
+          "title",
+          "weight",
+          "scoreMin",
+          "scoreMax"
+        ]
       },
       "RubricDto": {
         "type": "object",
@@ -3529,7 +3803,10 @@
             "type": "boolean"
           }
         },
-        "required": ["name", "criteria"]
+        "required": [
+          "name",
+          "criteria"
+        ]
       },
       "StageDto": {
         "type": "object",
@@ -3664,7 +3941,9 @@
             "format": "uuid"
           }
         },
-        "required": ["stageId"]
+        "required": [
+          "stageId"
+        ]
       },
       "SubmitDto": {
         "type": "object",
@@ -3678,7 +3957,10 @@
             "format": "uuid"
           }
         },
-        "required": ["revision", "versionId"]
+        "required": [
+          "revision",
+          "versionId"
+        ]
       },
       "SubmissionRevisionDto": {
         "type": "object",
@@ -3688,7 +3970,9 @@
             "minimum": 0
           }
         },
-        "required": ["revision"]
+        "required": [
+          "revision"
+        ]
       },
       "ReopenSubmissionDto": {
         "type": "object",
@@ -3707,7 +3991,11 @@
             "format": "date-time"
           }
         },
-        "required": ["revision", "reason", "until"]
+        "required": [
+          "revision",
+          "reason",
+          "until"
+        ]
       },
       "ManualAssignmentDto": {
         "type": "object",
@@ -3718,7 +4006,10 @@
           },
           "reviewerType": {
             "type": "string",
-            "enum": ["GROUP", "INSTRUCTOR"]
+            "enum": [
+              "GROUP",
+              "INSTRUCTOR"
+            ]
           },
           "reviewerGroupId": {
             "type": "string",
@@ -3732,7 +4023,10 @@
             "type": "boolean"
           }
         },
-        "required": ["submissionId", "reviewerType"]
+        "required": [
+          "submissionId",
+          "reviewerType"
+        ]
       },
       "AssignmentPlanDto": {
         "type": "object",
@@ -3742,7 +4036,9 @@
             "format": "uuid"
           }
         },
-        "required": ["stageId"]
+        "required": [
+          "stageId"
+        ]
       },
       "ReasonDto": {
         "type": "object",
@@ -3753,14 +4049,19 @@
             "maxLength": 4000
           }
         },
-        "required": ["reason"]
+        "required": [
+          "reason"
+        ]
       },
       "ConflictDecisionDto": {
         "type": "object",
         "properties": {
           "decision": {
             "type": "string",
-            "enum": ["APPROVED", "REJECTED"]
+            "enum": [
+              "APPROVED",
+              "REJECTED"
+            ]
           },
           "note": {
             "type": "string",
@@ -3768,7 +4069,10 @@
             "maxLength": 4000
           }
         },
-        "required": ["decision", "note"]
+        "required": [
+          "decision",
+          "note"
+        ]
       },
       "ScoreResponseDto": {
         "type": "object",
@@ -3787,7 +4091,11 @@
             "maxLength": 10000
           }
         },
-        "required": ["criterionId", "score", "comment"]
+        "required": [
+          "criterionId",
+          "score",
+          "comment"
+        ]
       },
       "ReviewDraftDto": {
         "type": "object",
@@ -3820,7 +4128,13 @@
             }
           }
         },
-        "required": ["revision", "strengths", "weaknesses", "overallComment", "responses"]
+        "required": [
+          "revision",
+          "strengths",
+          "weaknesses",
+          "overallComment",
+          "responses"
+        ]
       },
       "RevisionDto": {
         "type": "object",
@@ -3830,7 +4144,9 @@
             "minimum": 0
           }
         },
-        "required": ["revision"]
+        "required": [
+          "revision"
+        ]
       },
       "CorrectionDto": {
         "type": "object",
@@ -3845,7 +4161,10 @@
             "format": "date-time"
           }
         },
-        "required": ["reason", "deadline"]
+        "required": [
+          "reason",
+          "deadline"
+        ]
       },
       "ReleaseDto": {
         "type": "object",
@@ -3864,7 +4183,9 @@
             "format": "date-time"
           }
         },
-        "required": ["revision"]
+        "required": [
+          "revision"
+        ]
       },
       "RebuttalResponseDto": {
         "type": "object",
@@ -3878,7 +4199,10 @@
             "maxLength": 15000
           }
         },
-        "required": ["reviewId", "content"]
+        "required": [
+          "reviewId",
+          "content"
+        ]
       },
       "RebuttalDraftDto": {
         "type": "object",
@@ -3899,7 +4223,11 @@
             }
           }
         },
-        "required": ["revision", "generalResponse", "responses"]
+        "required": [
+          "revision",
+          "generalResponse",
+          "responses"
+        ]
       },
       "ReopenRebuttalDto": {
         "type": "object",
@@ -3917,7 +4245,11 @@
             "type": "boolean"
           }
         },
-        "required": ["reason", "deadline", "acknowledgePublishedGrade"]
+        "required": [
+          "reason",
+          "deadline",
+          "acknowledgePublishedGrade"
+        ]
       },
       "DiscussionDto": {
         "type": "object",
@@ -3932,7 +4264,9 @@
             "maxLength": 10000
           }
         },
-        "required": ["content"]
+        "required": [
+          "content"
+        ]
       }
     }
   }

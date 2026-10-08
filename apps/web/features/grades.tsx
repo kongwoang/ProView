@@ -41,6 +41,7 @@ interface GradingContext {
     id: string;
     status: string;
     submittedVersionId: string;
+    reviewCycle: number;
     project: { title: string };
   };
   rubric: { id: string; criteria: Criterion[] };
@@ -190,9 +191,11 @@ export function GradingWorkspace({ id }: { id: string }) {
   const [showPdf, setShowPdf] = useState(false);
   const draftRevisionRef = useRef<number | null>(null);
   const draftIdRef = useRef<string | null>(null);
-  const evidenceRef = useRef<{ submissionVersionId: string; rubricRevisionId: string } | null>(
-    null,
-  );
+  const evidenceRef = useRef<{
+    submissionVersionId: string;
+    rubricRevisionId: string;
+    reviewCycle: number;
+  } | null>(null);
   return (
     <QueryState query={query}>
       {(context) => {
@@ -206,16 +209,18 @@ export function GradingWorkspace({ id }: { id: string }) {
           evidenceRef.current = {
             submissionVersionId: context.submission.submittedVersionId,
             rubricRevisionId: context.rubric.id,
+            reviewCycle: context.submission.reviewCycle,
           };
         if (
+          evidenceRef.current.reviewCycle !== context.submission.reviewCycle ||
           evidenceRef.current.submissionVersionId !== context.submission.submittedVersionId ||
           evidenceRef.current.rubricRevisionId !== context.rubric.id
         )
           return (
             <Section title="Grading evidence changed">
               <p>
-                The submitted PDF or rubric has changed. Reload and review the current evidence
-                before grading.
+                The submitted PDF, rubric or submission round has changed. Reload and review the
+                current evidence before grading.
               </p>
               <button className="button" onClick={() => window.location.reload()}>
                 Reload assessment

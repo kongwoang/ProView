@@ -43,6 +43,24 @@ test('persistent 401 does not create an infinite refresh loop', async () => {
   assert.equal(requests, 3);
 });
 
+test('refresh into another account never retries the previous account action', async () => {
+  let actions = 0;
+  const states: (string | null)[] = [];
+  const client = new ApiClient((async (url) => {
+    if (url === '/api/v1/auth/refresh') return json(session('second'));
+    actions++;
+    return json({ code: 'UNAUTHORIZED', message: 'Expired' }, 401);
+  }) as typeof fetch);
+  client.onSessionChange((next) => states.push(next?.user.id ?? null));
+  client.setSession(session('first', 'expired'));
+  await assert.rejects(
+    client.post('/private', { action: 'save' }),
+    (error: unknown) => error instanceof ApiError && error.details.code === 'SESSION_CHANGED',
+  );
+  assert.equal(actions, 1);
+  assert.deepEqual(states, ['first', 'second']);
+});
+
 test('late response from a previous account is discarded', async () => {
   let resolveResponse!: (response: Response) => void;
   const client = new ApiClient(

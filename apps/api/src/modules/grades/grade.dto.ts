@@ -27,6 +27,10 @@ export class CriterionScoreDto {
   comment?: string;
 }
 export class SaveGradeDto {
+  @ApiProperty({ type: Number, minimum: 1 })
+  @IsInt()
+  @Min(1)
+  reviewCycle!: number;
   @ApiProperty({ type: String, format: 'uuid' })
   @IsUUID()
   submissionVersionId!: string;

@@ -266,6 +266,7 @@ export class GradesService {
     if (submission.offering.status !== 'ACTIVE')
       throw new ConflictException('The course offering is not editable');
     if (
+      input.reviewCycle !== submission.reviewCycle ||
       input.submissionVersionId !== submission.submittedVersionId ||
       input.rubricRevisionId !== submission.stage.rubricRevisionId
     )
@@ -293,6 +294,7 @@ export class GradesService {
         include: { stage: true, offering: true },
       });
       if (
+        locked.reviewCycle !== input.reviewCycle ||
         locked.revision !== submission.revision ||
         locked.submittedVersionId !== input.submissionVersionId ||
         locked.stage.rubricRevisionId !== input.rubricRevisionId ||
@@ -356,6 +358,8 @@ export class GradesService {
       });
       await this.audit.record(tx, actor, 'GRADE_DRAFT_SAVED', 'Grade', grade.id, {
         submissionVersionId: submission.submittedVersionId!,
+        reviewCycle: submission.reviewCycle,
+        gradeRevisionId: draft.id,
       });
       return {
         id: grade.id,

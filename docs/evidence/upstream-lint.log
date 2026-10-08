@@ -1,0 +1,7 @@
+
+> openreview-web@1.15.38 lint
+> oxlint --report-unused-disable-directives --quiet
+
+
+Found 3905 warnings and 0 errors.
+Finished in 32ms on 475 files with 85 rules using 12 threads.
