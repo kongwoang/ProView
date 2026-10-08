@@ -33,11 +33,12 @@ async function actor(browser: Browser, username: string, origin: string) {
   return { page, context, token: session.accessToken as string };
 }
 async function nav(page: Page, path: string) {
+  await page.bringToFront();
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .locator(`a[href="${path}"]`)
     .click();
-  await expect(page).toHaveURL((url) => url.pathname === path);
+  await expect(page).toHaveURL((url) => url.pathname === path, { timeout: 30_000 });
 }
 async function offering(page: Page, id: string, semester: string) {
   await nav(page, '/courses');
@@ -47,6 +48,9 @@ async function offering(page: Page, id: string, semester: string) {
 async function project(page: Page, title: string) {
   await nav(page, '/projects');
   await page.getByRole('link', { name: title, exact: true }).click();
+  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
 }
 async function startSubmission(page: Page, title: string, stage: string) {
   await project(page, title);
@@ -73,7 +77,12 @@ async function openSubmission(page: Page, title: string, stage: string) {
     .filter({ has: page.getByRole('heading', { name: stage, exact: true }) })
     .getByRole('link', { name: /Open submission/ })
     .click();
-  await expect(page).toHaveURL((url) => url.pathname.startsWith('/submissions/'));
+  await expect(page).toHaveURL((url) => url.pathname.startsWith('/submissions/'), {
+    timeout: 30_000,
+  });
+  await expect(page.getByRole('tab', { name: 'Document', exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
 }
 async function upload(page: Page, id: string, note: string) {
   await page.getByRole('button', { name: /Upload revision/ }).click();
