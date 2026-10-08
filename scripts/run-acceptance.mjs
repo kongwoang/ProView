@@ -124,6 +124,10 @@ async function browserChecks(args) {
     webLog.end();
   }
 }
-await withApi('browser', () => browserChecks(['--grep-invert', '@lifecycle']));
-await withApi('browser', () => browserChecks(['--grep', '@lifecycle']));
+await withApi('browser', () =>
+  browserChecks(['--grep-invert', '@lifecycle', '--output=test-results/focused']),
+);
+await withApi('browser', () =>
+  browserChecks(['--grep', '@lifecycle', '--output=test-results/lifecycle']),
+);
 console.log('PASS selected isolated acceptance suites.');

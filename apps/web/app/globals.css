@@ -1,4 +1,11 @@
 /* ProView theme. Spinner animation adapted from OpenReview styles/global.scss (AGPL-3.0-or-later). */
+@font-face {
+  font-family: 'ProView Montserrat';
+  src: url('/brand/Montserrat-Variable.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
 :root {
   --navy: #0d1b3d;
   --blue: #1565e8;
@@ -204,42 +211,65 @@ strong {
   flex-direction: column;
 }
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: white;
-  font-size: 27px;
-  line-height: 1;
-  font-weight: 750;
-  letter-spacing: -1.3px;
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 12px 10px;
+  background: white;
+  border-radius: 10px;
   text-decoration: none;
 }
 .brand:hover {
   text-decoration: none;
 }
-.brand-light {
-  font-weight: 350;
+.proview-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.proview-brand-icon {
+  display: block;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+.proview-brand-text {
+  display: block;
+}
+.proview-wordmark {
+  font-family: 'ProView Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 25px;
+  line-height: 1.15;
+  letter-spacing: -0.7px;
+  color: var(--navy);
+  white-space: nowrap;
+}
+.proview-wordmark-view {
+  color: #584af7;
+  background: linear-gradient(90deg, #1565e8 0%, #3757f0 33%, #584af7 67%, #7a3cff 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .brand small {
   display: block;
-  font-size: 7px;
-  font-weight: 500;
-  color: #95a5c7;
-  letter-spacing: 1.15px;
-  margin-top: 10px;
-}
-.brand-mark {
-  background: #315deb;
-  border-radius: 9px 9px 9px 2px;
-  width: 36px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  font-size: 26px;
+  font-size: 6px;
+  line-height: 1.4;
   font-weight: 650;
-  color: #fff;
-  letter-spacing: -1px;
-  box-shadow: 4px -4px 0 #7883f2;
+  color: #718097;
+  letter-spacing: 0.85px;
+  margin-top: 5px;
+}
+.login-story .brand {
+  padding: 16px 20px;
+}
+.login-story .proview-wordmark {
+  font-size: 30px;
+}
+.login-story .proview-brand-icon {
+  width: 42px;
+  height: 42px;
 }
 .workspace-label {
   margin: 47px 13px 12px;

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: { default: 'ProView', template: '%s · ProView' },
   description: 'A workspace for course projects, thoughtful peer review, and academic progress.',
   robots: { index: false, follow: false },
+  icons: { icon: '/brand/proview-icon.png', apple: '/brand/proview-icon.png' },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

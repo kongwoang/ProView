@@ -40,7 +40,7 @@ See [testing](docs/testing.md) for PostgreSQL, HTTP and Chromium commands; [veri
 
 - [Architecture](docs/architecture.md), [database](docs/database.md), [domain model](docs/domain-model.md).
 - [Workflow](docs/workflow.md), [authorization](docs/authorization.md), [API guide](docs/api.md).
-- [Deployment checklist](docs/deployment-checklist.md).
+- [Deployment checklist](docs/deployment-checklist.md), [brand assets and typography](docs/branding.md).
 - [OpenReview provenance](docs/upstream-openreview.md), [adaptation](docs/openreview-adaptation.md) and retained [license](apps/web/LICENSE.md).
 - [Implementation plan](docs/implementation-plan.md), [agent tasks](docs/agent-tasks.md), [domain decisions](docs/domain-decisions.md), [requirements matrix](docs/requirements-matrix.md).
 - Original [specification](docs/specifications/01-proview-original.txt) and [frontend override](docs/specifications/02-openreview-override.txt).

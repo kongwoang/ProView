@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSession } from '@/providers/session-provider';
 import SpinnerButton from '@/components/upstream/SpinnerButton';
 import { ErrorState, Field } from '@/components/ui';
+import { ProViewBrand } from '@/components/proview-brand';
 
 export default function LoginPage() {
   const { user, loading, login } = useSession();
@@ -34,11 +35,8 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-story">
-        <Link className="brand" href="/">
-          <span className="brand-mark">P</span>
-          <span>
-            Pro<span className="brand-light">View</span>
-          </span>
+        <Link className="brand" href="/" aria-label="ProView home">
+          <ProViewBrand />
         </Link>
         <div>
           <p className="eyebrow">FROM FIRST IDEA TO FINAL REVIEW</p>

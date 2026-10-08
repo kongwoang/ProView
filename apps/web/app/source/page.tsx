@@ -27,6 +27,10 @@ export default function SourcePage() {
         The source includes the ProView modifications and upstream attribution. Operators who modify
         this application must offer the corresponding source for their deployed version.
       </p>
+      <p>
+        The ProView logo and wordmark follow the project team’s branding. Montserrat is used under
+        the <a href="/brand/Montserrat-OFL.txt">SIL Open Font License, version 1.1</a>.
+      </p>
     </main>
   );
 }

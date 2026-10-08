@@ -32,6 +32,15 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
     return route.continue();
   });
   await login(page, 'student1');
+  await page.evaluate(() => document.fonts.ready);
+  expect(await page.evaluate(() => document.fonts.check('800 25px "ProView Montserrat"'))).toBe(
+    true,
+  );
+  const brand = page.locator('.sidebar .proview-brand');
+  expect(await brand.locator('img').evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(
+    1254,
+  );
+  await expect(brand.locator('.proview-wordmark')).toHaveText('ProView');
   await expect(page.locator('.stat-card')).toHaveCount(4);
   await page.screenshot({ path: 'test-results/dashboard-desktop.png', fullPage: true });
   expect(await page.evaluate(() => Object.keys(localStorage))).toEqual([]);

@@ -7,6 +7,7 @@ import { useSession } from '@/providers/session-provider';
 import type { Role } from '@/lib/api/contracts';
 import LoadingSpinner from './upstream/LoadingSpinner';
 import { ErrorState } from './ui';
+import { ProViewBrand } from './proview-brand';
 
 const navigation: { label: string; href: string; icon: string; roles?: Role[] }[] = [
   { label: 'Overview', href: '/dashboard', icon: '◫' },
@@ -68,12 +69,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <aside className={`sidebar ${expanded ? 'is-open' : ''}`}>
-        <Link className="brand" href="/dashboard">
-          <span className="brand-mark">P</span>
-          <span>
-            Pro<span className="brand-light">View</span>
-            <small>PROJECT REVIEW WORKSPACE</small>
-          </span>
+        <Link className="brand" href="/dashboard" aria-label="ProView overview">
+          <ProViewBrand tagline />
         </Link>
         <div className="workspace-label">{user.role.toLowerCase()} workspace</div>
         <nav aria-label="Main navigation">
