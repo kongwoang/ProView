@@ -45,6 +45,7 @@ interface AssignmentItem {
   projectTitle: string;
   stageName: string;
   deadline: string | null;
+  timezone: string;
   status: string;
   reviewerType: string;
   reviewerLabel: string;
@@ -63,6 +64,7 @@ interface AssignmentReview {
     projectTitle: string;
     stageName: string;
     deadline: string | null;
+    timezone: string;
   };
   rubric: RubricRevision;
   review: ReviewView | null;
@@ -98,7 +100,7 @@ export function ReviewsPage() {
                         {assignment.stageName} · {assignment.reviewerLabel}
                       </p>
                     </td>
-                    <td>{dateTime(assignment.deadline)}</td>
+                    <td>{dateTime(assignment.deadline, assignment.timezone)}</td>
                     <td>
                       <StatusBadge status={assignment.status} />
                     </td>
@@ -191,7 +193,7 @@ export function ReviewEditorPage({ id }: { id: string }) {
             <PageHeader
               eyebrow={`${data.assignment.stageName} · REVIEW ASSIGNMENT`}
               title={data.assignment.projectTitle}
-              description={`Due ${dateTime(data.assignment.deadline)} · Your review is bound to the assigned PDF version.`}
+              description={`Due ${dateTime(data.assignment.deadline, data.assignment.timezone)} · Your review is bound to the assigned PDF version.`}
               actions={<StatusBadge status={data.assignment.status} />}
             />
             {action.feedback}
@@ -349,7 +351,8 @@ export function ReviewEditorPage({ id }: { id: string }) {
                   )}
                   {!editable && (
                     <p className="muted small">
-                      Submitted {dateTime(submitted?.submittedAt)}. This revision is read-only.
+                      Submitted {dateTime(submitted?.submittedAt, data.assignment.timezone)}. This
+                      revision is read-only.
                     </p>
                   )}
                 </form>
@@ -401,8 +404,14 @@ export function SubmissionReviews({ submission }: { submission: Submission }) {
                     api.post(`/submissions/${submission.id}/reviews/release`, {
                       revision: submission.revision,
                       ...(formText(f, 'reason') ? { reason: formText(f, 'reason') } : {}),
-                      ...(formDate(f, 'rebuttalDeadline')
-                        ? { rebuttalDeadline: formDate(f, 'rebuttalDeadline') }
+                      ...(formDate(f, 'rebuttalDeadline', submission.offering.timezone)
+                        ? {
+                            rebuttalDeadline: formDate(
+                              f,
+                              'rebuttalDeadline',
+                              submission.offering.timezone,
+                            ),
+                          }
                         : {}),
                     }),
                   'Reviews released.',
@@ -412,7 +421,10 @@ export function SubmissionReviews({ submission }: { submission: Submission }) {
             <Field label="Reason for incomplete reviews or waived rebuttal (if needed)">
               <textarea name="reason" />
             </Field>
-            <Field label="Optional new rebuttal deadline">
+            <Field
+              label="Optional new rebuttal deadline"
+              help={`Time in ${submission.offering.timezone}`}
+            >
               <input type="datetime-local" name="rebuttalDeadline" />
             </Field>
             <SpinnerButton type="submit" loading={action.pending}>
@@ -456,7 +468,7 @@ export function SubmissionReviews({ submission }: { submission: Submission }) {
                             () =>
                               api.post(`/reviews/${review.id}/correction-authorizations`, {
                                 reason: formText(f, 'reason'),
-                                deadline: formDate(f, 'deadline'),
+                                deadline: formDate(f, 'deadline', submission.offering.timezone),
                               }),
                             'Correction authorized.',
                           )
@@ -466,7 +478,10 @@ export function SubmissionReviews({ submission }: { submission: Submission }) {
                       <Field label="Correction reason">
                         <textarea name="reason" required />
                       </Field>
-                      <Field label="Correction deadline">
+                      <Field
+                        label="Correction deadline"
+                        help={`Time in ${submission.offering.timezone}`}
+                      >
                         <input name="deadline" type="datetime-local" required />
                       </Field>
                       <SpinnerButton type="submit" loading={action.pending}>

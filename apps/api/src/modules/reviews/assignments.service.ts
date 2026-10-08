@@ -51,7 +51,7 @@ export class AssignmentsService {
         ],
       },
       include: {
-        submission: { include: { project: true, stage: true } },
+        submission: { include: { project: true, stage: true, offering: true } },
         reviewerGroup: true,
         review: { include: { draftRevision: true, submittedRevision: true } },
         conflicts: { orderBy: { createdAt: 'desc' } },
@@ -68,6 +68,7 @@ export class AssignmentsService {
         projectTitle: a.submission.project.title,
         stageName: a.submission.stage.name,
         deadline: a.submission.stage.reviewDeadline,
+        timezone: a.submission.offering.timezone,
         status: a.status,
         reviewerType: a.reviewerType,
         reviewerLabel: a.reviewerGroup?.name ?? 'Instructor',

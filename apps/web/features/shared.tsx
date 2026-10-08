@@ -8,6 +8,8 @@ import type { PageResult } from '@/lib/api/contracts';
 import { ErrorState } from '@/components/ui';
 import LoadingSpinner from '@/components/upstream/LoadingSpinner';
 import Alert from '@/components/upstream/Alert';
+import { dateInputToIso } from '@/lib/date-time';
+export { dateTime, dateInput } from '@/lib/date-time';
 
 export function useResource<T>(resource: string, path: string, enabled = true) {
   const { user, api } = useSession();
@@ -68,28 +70,15 @@ export function QueryState<T>({
 export function itemsOf<T>(data: PageResult<T> | T[] | undefined): T[] {
   return Array.isArray(data) ? data : (data?.items ?? []);
 }
-export function dateTime(value: string | null | undefined) {
-  return value
-    ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(
-        new Date(value),
-      )
-    : 'Not set';
-}
-export function dateInput(value: string | null | undefined) {
-  if (!value) return '';
-  const date = new Date(value);
-  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-  return date.toISOString().slice(0, 16);
-}
 export function formText(form: FormData, key: string) {
   return String(form.get(key) ?? '').trim();
 }
 export function formNumber(form: FormData, key: string) {
   return Number(form.get(key));
 }
-export function formDate(form: FormData, key: string) {
+export function formDate(form: FormData, key: string, timeZone?: string) {
   const value = formText(form, key);
-  return value ? new Date(value).toISOString() : undefined;
+  return value ? dateInputToIso(value, timeZone) : undefined;
 }
 
 export function AuthorizedPdf({

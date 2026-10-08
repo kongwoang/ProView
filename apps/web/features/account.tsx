@@ -106,9 +106,10 @@ interface AcademicProject {
 
 export function ProfilePage() {
   const { user, api, reloadUser, logout } = useSession();
+  const [historyPage, setHistoryPage] = useState(1);
   const history = useResource<PageResult<AcademicProject>>(
     'profile-history',
-    '/archive/own?pageSize=5',
+    `/archive/own?page=${historyPage}&pageSize=5`,
     user?.role === 'STUDENT',
   );
   const action = useAction();
@@ -205,34 +206,42 @@ export function ProfilePage() {
             Your past project work remains available through historical group membership.
           </p>
           <QueryState query={history}>
-            {(data) =>
-              data.items.length ? (
-                <div className="cards-grid">
-                  {data.items.map((project) => (
-                    <article className="project-card" key={project.id}>
-                      <p className="eyebrow">
-                        {project.offering.course.code} · {project.offering.semester}
-                      </p>
-                      <h3>{project.title}</h3>
-                      <p className="muted small">{project.offering.course.title}</p>
-                      {project.submissions
-                        .filter((submission) => submission.grade)
-                        .map((submission) => (
-                          <p className="small" key={submission.id}>
-                            {submission.stage.name} · Published grade:{' '}
-                            <strong>{submission.grade!.overall ?? '—'} / 10</strong>
-                          </p>
-                        ))}
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="No completed projects yet"
-                  description="Your work from closed course offerings will appear here."
+            {(data) => (
+              <>
+                {data.items.length ? (
+                  <div className="cards-grid">
+                    {data.items.map((project) => (
+                      <article className="project-card" key={project.id}>
+                        <p className="eyebrow">
+                          {project.offering.course.code} · {project.offering.semester}
+                        </p>
+                        <h3>{project.title}</h3>
+                        <p className="muted small">{project.offering.course.title}</p>
+                        {project.submissions
+                          .filter((submission) => submission.grade)
+                          .map((submission) => (
+                            <p className="small" key={submission.id}>
+                              {submission.stage.name} · Published grade:{' '}
+                              <strong>{submission.grade!.overall ?? '—'} / 10</strong>
+                            </p>
+                          ))}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No completed projects yet"
+                    description="Your work from closed course offerings will appear here."
+                  />
+                )}
+                <PaginationLinks
+                  currentPage={historyPage}
+                  itemsPerPage={5}
+                  totalCount={data.total}
+                  setCurrentPage={setHistoryPage}
                 />
-              )
-            }
+              </>
+            )}
           </QueryState>
           <Link className="button secondary" href="/archive">
             View my project archive →

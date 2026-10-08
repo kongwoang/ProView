@@ -26,6 +26,12 @@ export function CoursesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [create, setCreate] = useState(false);
+  const [copySearch, setCopySearch] = useState('');
+  const copySources = useResource<PageResult<Offering>>(
+    'copy-sources',
+    `/offerings?pageSize=100&search=${encodeURIComponent(copySearch)}`,
+    create,
+  );
   const offerings = useResource<PageResult<Offering>>(
     'offerings',
     `/offerings?page=${page}&pageSize=12&search=${encodeURIComponent(search)}`,
@@ -50,8 +56,8 @@ export function CoursesPage() {
           courseId: formText(form, 'courseId'),
           semester: formText(form, 'semester'),
           academicYear: formText(form, 'academicYear'),
-          termStartAt: formDate(form, 'termStartAt'),
-          termEndAt: formDate(form, 'termEndAt'),
+          termStartAt: formDate(form, 'termStartAt', formText(form, 'timezone')),
+          termEndAt: formDate(form, 'termEndAt', formText(form, 'timezone')),
           timezone: formText(form, 'timezone'),
           anonymityMode: formText(form, 'anonymityMode'),
           ...(formText(form, 'copyFromOfferingId')
@@ -100,10 +106,10 @@ export function CoursesPage() {
               <Field label="Timezone">
                 <input name="timezone" defaultValue="Asia/Ho_Chi_Minh" required />
               </Field>
-              <Field label="Term starts">
+              <Field label="Term starts" help="Times use the offering timezone entered above.">
                 <input name="termStartAt" type="datetime-local" required />
               </Field>
-              <Field label="Term ends">
+              <Field label="Term ends" help="Times use the offering timezone entered above.">
                 <input name="termEndAt" type="datetime-local" required />
               </Field>
               <Field label="Reviewer identities to authors">
@@ -112,16 +118,30 @@ export function CoursesPage() {
                   <option value="NAMED">Named</option>
                 </select>
               </Field>
-              <Field label="Copy configuration from">
-                <select name="copyFromOfferingId">
-                  <option value="">Start with default stages</option>
-                  {itemsOf(offerings.data).map((o) => (
-                    <option value={o.id} key={o.id}>
-                      {o.course.code} · {o.semester} {o.academicYear}
-                    </option>
-                  ))}
-                </select>
+              <Field
+                label="Find source offering"
+                help="Search by course or semester to copy an older offering."
+              >
+                <input
+                  value={copySearch}
+                  onChange={(event) => setCopySearch(event.target.value)}
+                  placeholder="Course or semester…"
+                />
               </Field>
+              <QueryState query={copySources}>
+                {(sources) => (
+                  <Field label="Copy configuration from">
+                    <select name="copyFromOfferingId">
+                      <option value="">Start with default stages</option>
+                      {sources.items.map((o) => (
+                        <option value={o.id} key={o.id}>
+                          {o.course.code} · {o.semester} {o.academicYear}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+              </QueryState>
             </div>
             {user?.role === 'ADMIN' && (
               <fieldset>
@@ -244,13 +264,18 @@ export function OfferingPage({ id }: { id: string }) {
                   <div className="timeline-item" key={stage.id}>
                     <h3>{stage.name}</h3>
                     <p className="muted">
-                      Submissions: {dateTime(stage.openAt)} → {dateTime(stage.submissionDeadline)}
+                      Submissions: {dateTime(stage.openAt, offering.timezone)} →{' '}
+                      {dateTime(stage.submissionDeadline, offering.timezone)}
                     </p>
                     {stage.allowReviews && (
-                      <p className="muted">Review deadline: {dateTime(stage.reviewDeadline)}</p>
+                      <p className="muted">
+                        Review deadline: {dateTime(stage.reviewDeadline, offering.timezone)}
+                      </p>
                     )}
                     {stage.allowRebuttal && (
-                      <p className="muted">Rebuttal deadline: {dateTime(stage.rebuttalDeadline)}</p>
+                      <p className="muted">
+                        Rebuttal deadline: {dateTime(stage.rebuttalDeadline, offering.timezone)}
+                      </p>
                     )}
                     <span className="status-badge">
                       {stage.requireSimilarityCheck ? 'Similarity required' : 'Peer review'}
@@ -271,7 +296,8 @@ export function OfferingPage({ id }: { id: string }) {
                   . Instructors can always see reviewer identities.
                 </div>
                 <p className="small muted">
-                  Term: {dateTime(offering.termStartAt)} — {dateTime(offering.termEndAt)}
+                  Term: {dateTime(offering.termStartAt, offering.timezone)} —{' '}
+                  {dateTime(offering.termEndAt, offering.timezone)}
                 </p>
                 <Link className="button secondary" href="/projects">
                   View my projects →
@@ -666,7 +692,7 @@ function StageSettings({ offering }: { offering: Offering }) {
                 {stage.sequence}. {stage.name}
               </h3>
               <p className="muted">
-                Submission deadline {dateTime(stage.submissionDeadline)} ·{' '}
+                Submission deadline {dateTime(stage.submissionDeadline, offering.timezone)} ·{' '}
                 {stage.rubricRevision.criteria.length} rubric criteria
               </p>
               <p className="muted">
@@ -688,6 +714,7 @@ function StageSettings({ offering }: { offering: Offering }) {
       </Section>
       {edit && (
         <Section title={`Configure ${edit.name}`}>
+          <p className="muted small">Enter all times in {offering.timezone}.</p>
           <form
             className="form-stack"
             key={edit.id}
@@ -700,10 +727,10 @@ function StageSettings({ offering }: { offering: Offering }) {
                     ? api.post(`/offerings/${offering.id}/stages`, {
                         ...stagePayload(edit),
                         name: formText(f, 'name'),
-                        openAt: formDate(f, 'openAt'),
-                        submissionDeadline: formDate(f, 'submissionDeadline'),
-                        reviewDeadline: formDate(f, 'reviewDeadline'),
-                        rebuttalDeadline: formDate(f, 'rebuttalDeadline'),
+                        openAt: formDate(f, 'openAt', offering.timezone),
+                        submissionDeadline: formDate(f, 'submissionDeadline', offering.timezone),
+                        reviewDeadline: formDate(f, 'reviewDeadline', offering.timezone),
+                        rebuttalDeadline: formDate(f, 'rebuttalDeadline', offering.timezone),
                         peerReviewCount: formNumber(f, 'peerReviewCount'),
                         allowReviews: f.has('allowReviews'),
                         allowRebuttal: f.has('allowRebuttal'),
@@ -713,10 +740,10 @@ function StageSettings({ offering }: { offering: Offering }) {
                         ...stagePayload(edit),
                         revision: edit.revision,
                         name: formText(f, 'name'),
-                        openAt: formDate(f, 'openAt'),
-                        submissionDeadline: formDate(f, 'submissionDeadline'),
-                        reviewDeadline: formDate(f, 'reviewDeadline'),
-                        rebuttalDeadline: formDate(f, 'rebuttalDeadline'),
+                        openAt: formDate(f, 'openAt', offering.timezone),
+                        submissionDeadline: formDate(f, 'submissionDeadline', offering.timezone),
+                        reviewDeadline: formDate(f, 'reviewDeadline', offering.timezone),
+                        rebuttalDeadline: formDate(f, 'rebuttalDeadline', offering.timezone),
                         peerReviewCount: formNumber(f, 'peerReviewCount'),
                         allowReviews: f.has('allowReviews'),
                         allowRebuttal: f.has('allowRebuttal'),
@@ -758,7 +785,7 @@ function StageSettings({ offering }: { offering: Offering }) {
                   <input
                     type="datetime-local"
                     name={field}
-                    defaultValue={dateInput(edit[field])}
+                    defaultValue={dateInput(edit[field], offering.timezone)}
                     required={field === 'openAt' || field === 'submissionDeadline'}
                   />
                 </Field>

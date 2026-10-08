@@ -82,7 +82,8 @@ export function RebuttalPanel({ submission }: { submission: Submission }) {
           return (
             <Section title="Author rebuttal" actions={<StatusBadge status={rebuttal.status} />}>
               <p className="muted small">
-                Deadline {dateTime(rebuttal.deadline)}. One shared response for your group.
+                Deadline {dateTime(rebuttal.deadline, submission.offering.timezone)}. One shared
+                response for your group.
               </p>
               <form
                 ref={formRef}
@@ -141,7 +142,9 @@ export function RebuttalPanel({ submission }: { submission: Submission }) {
               {!rebuttal.canEdit && (
                 <p className="small muted" style={{ marginTop: 18 }}>
                   This response is read-only.{' '}
-                  {rebuttal.finalizedAt ? `Finalized ${dateTime(rebuttal.finalizedAt)}.` : ''}
+                  {rebuttal.finalizedAt
+                    ? `Finalized ${dateTime(rebuttal.finalizedAt, submission.offering.timezone)}.`
+                    : ''}
                 </p>
               )}
               {user?.role !== 'STUDENT' && (
@@ -160,7 +163,7 @@ export function RebuttalPanel({ submission }: { submission: Submission }) {
                         () =>
                           api.post(`/rebuttals/${rebuttal.id}/reopen`, {
                             reason: formText(f, 'reason'),
-                            deadline: formDate(f, 'deadline'),
+                            deadline: formDate(f, 'deadline', submission.offering.timezone),
                             acknowledgePublishedGrade: f.has('acknowledgePublishedGrade'),
                           }),
                         'Rebuttal reopened.',
@@ -171,7 +174,7 @@ export function RebuttalPanel({ submission }: { submission: Submission }) {
                   <Field label="Reopening reason">
                     <textarea name="reason" required />
                   </Field>
-                  <Field label="New deadline">
+                  <Field label="New deadline" help={`Time in ${submission.offering.timezone}`}>
                     <input name="deadline" type="datetime-local" required />
                   </Field>
                   <label className="check-field">

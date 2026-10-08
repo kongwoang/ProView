@@ -32,8 +32,8 @@ Chỉ một agent thực hiện các gói tuần tự theo yêu cầu hiện t�
 
 1. Hoàn thiện success-response DTO/schema cho73/89 operations còn thiếu, đặc biệt projection review/rebuttal/grade theo audience; chuyển các domain views còn viết tay sang generated contracts. Hiện không dùng kiểu tự suy đoán raw Prisma để lấp coverage.
 2. Đối chiếu từng assertion AD01–AD11/S01–S10 và bổ sung test cho phần chưa có bằng chứng: phân tích chi tiết SSR/cache/notifications, payload XSS/log hygiene, failure compensation, auth rate-limit và các concurrency matrix còn thiếu. Test nhóm hiện có không tự chứng minh toàn bộ từng hàng.
-3. Rà soát hiển thị/nhập thời gian theo timezone offering trên các màn hình. Backend UTC/deadline guards đã có test; nhiều formatter/input frontend hiện còn dùng timezone trình duyệt.
-4. Hoàn tất evidence của format/drift/recovery trên CI mới. Host hiện không có Docker hoặc `pg_dump`/`pg_restore`, nên recovery thực chạy ở GitHub Actions; không suy diễn từ unit test.
+3. Hoàn tất evidence CI cho revision timezone/lịch sử. Deadline và term dates hiện dùng timezone offering; generic audit/notification timestamps ghi rõ timezone trình duyệt. Kiểm thử DST gap/fold và browser UTC/offering New York đã bổ sung.
+4. Format/drift/recovery đã PASS cả native và S3 trong [CI8563118](https://github.com/kongwoang/ProView/actions/runs/37752007606):39 bảng/21 PDF được khôi phục và đối chiếu, cùng các negative checks. Host không có Docker hoặc `pg_dump`/`pg_restore`; đây là kết quả thực ở GitHub Actions, không suy diễn từ unit test.
 
 ## Công việc operator trước deployment ngoài máy local
 

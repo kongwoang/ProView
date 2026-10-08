@@ -28,6 +28,7 @@ interface Dashboard {
     courseCode: string;
     type: string;
     at: string;
+    timezone: string;
   }[];
   assignedReviews: {
     id: string;
@@ -37,6 +38,7 @@ interface Dashboard {
     projectTitle: string;
     stageName: string;
     reviewDeadline: string | null;
+    timezone: string;
   }[];
   notifications: { unread: number };
   counts: {
@@ -208,7 +210,9 @@ export function DashboardPage() {
                             </Link>
                             <p>{assignment.stageName}</p>
                           </td>
-                          <td className="small">{dateTime(assignment.reviewDeadline)}</td>
+                          <td className="small">
+                            {dateTime(assignment.reviewDeadline, assignment.timezone)}
+                          </td>
                           <td>
                             <StatusBadge status={assignment.status} />
                           </td>
@@ -245,7 +249,7 @@ export function DashboardPage() {
                           <p className="muted">
                             {deadline.courseCode} · {deadline.type.toLowerCase()}
                           </p>
-                          <p className="muted small">{dateTime(deadline.at)}</p>
+                          <p className="muted small">{dateTime(deadline.at, deadline.timezone)}</p>
                         </div>
                       </div>
                     ))

@@ -178,6 +178,7 @@ export class ReviewsService {
         projectTitle: a.submission.project.title,
         stageName: a.submission.stage.name,
         deadline: a.review?.draftRevision?.correctionDeadline ?? a.submission.stage.reviewDeadline,
+        timezone: a.submission.offering.timezone,
       },
       rubric: {
         id: a.rubricRevision.id,

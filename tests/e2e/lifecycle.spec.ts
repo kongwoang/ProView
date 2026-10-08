@@ -1,12 +1,12 @@
 import { test, expect, type Page, type Browser } from '@playwright/test';
+import { dateInput } from '../../apps/web/lib/date-time';
 
 test.use({ actionTimeout: 10_000 });
 
 const stamp = () => new Date().toISOString().replace(/[-:.TZ]/g, '');
-const localDate = (days: number) => {
-  const date = new Date(Date.now() + days * 86_400_000);
-  return new Date(+date - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-};
+const offeringZone = 'America/New_York';
+const localDate = (days: number, zone = offeringZone) =>
+  dateInput(new Date(Date.now() + days * 86_400_000).toISOString(), zone);
 async function action(page: Page, suffix: string, method: string, click: () => Promise<unknown>) {
   const pending = page.waitForResponse(
     (response) =>
@@ -20,7 +20,7 @@ async function action(page: Page, suffix: string, method: string, click: () => P
   return response.json();
 }
 async function actor(browser: Browser, username: string, origin: string) {
-  const context = await browser.newContext({ baseURL: origin });
+  const context = await browser.newContext({ baseURL: origin, timezoneId: 'UTC' });
   const page = await context.newPage();
   page.on('dialog', (dialog) => dialog.accept('Browser lifecycle acceptance: verified conflict.'));
   await page.goto('/login');
@@ -39,8 +39,9 @@ async function nav(page: Page, path: string) {
     .click();
   await expect(page).toHaveURL((url) => url.pathname === path);
 }
-async function offering(page: Page, id: string) {
+async function offering(page: Page, id: string, semester: string) {
   await nav(page, '/courses');
+  await page.getByLabel('Search courses', { exact: true }).fill(semester);
   await page.locator(`a[href="/offerings/${id}"]`).first().click();
 }
 async function project(page: Page, title: string) {
@@ -131,11 +132,18 @@ test('@lifecycle instructor setup → proposal versions → assignment/COI → a
     await p.getByLabel('Course', { exact: true }).selectOption({ index: 1 });
     await p.getByLabel('Semester', { exact: true }).fill(semester);
     await p.getByLabel('Academic year').fill('2026–2027');
-    await p.getByLabel('Term starts').fill(localDate(-7));
+    await p.getByLabel('Timezone', { exact: true }).fill(offeringZone);
+    const termStart = new Date(Date.now() - 7 * 86_400_000);
+    termStart.setUTCSeconds(0, 0);
+    await p.getByLabel('Term starts').fill(dateInput(termStart.toISOString(), offeringZone));
     await p.getByLabel('Term ends').fill(localDate(30));
+    const expectedTermStart = termStart.toISOString();
     const created = await action(p, '/offerings', 'POST', () =>
       p.getByRole('button', { name: 'Create offering', exact: true }).click(),
     );
+    expect(created.timezone).toBe(offeringZone);
+    expect(created.termStartAt).toBe(expectedTermStart);
+    await p.getByLabel('Search courses', { exact: true }).fill(semester);
     await p.locator(`a[href="/offerings/${created.id}"]`).first().click();
     await p.getByRole('tab', { name: 'Stages & rubrics', exact: true }).click();
     for (const stage of ['Proposal', 'Final Report']) {
@@ -362,7 +370,7 @@ test('@lifecycle instructor setup → proposal versions → assignment/COI → a
     ).toHaveCount(0);
     await expect(queueRow.getByText('SUBMITTED EXTERNALLY', { exact: true })).toBeVisible();
     await p.getByLabel('Similarity percentage', { exact: true }).fill('12.5');
-    await p.getByLabel('Result date', { exact: true }).fill(localDate(0));
+    await p.getByLabel('Result date', { exact: true }).fill(localDate(0, 'UTC'));
     await p
       .getByLabel('Notes', { exact: true })
       .fill('Manual COOPY evidence recorded by the instructor.');
@@ -376,7 +384,7 @@ test('@lifecycle instructor setup → proposal versions → assignment/COI → a
     );
     await grade(p, created.id, titles[0], 'Final Report');
     await expect(p.getByText('12.5%', { exact: false })).toBeVisible();
-    await offering(p, created.id);
+    await offering(p, created.id, semester);
     await p.getByRole('tab', { name: 'Settings', exact: true }).click();
     await p.getByLabel('Status', { exact: true }).selectOption('CLOSED');
     await action(p, `/offerings/${created.id}`, 'PATCH', () =>
@@ -396,12 +404,15 @@ test('@lifecycle instructor setup → proposal versions → assignment/COI → a
     await p.getByLabel('Course', { exact: true }).selectOption(created.courseId);
     await p.getByLabel('Semester', { exact: true }).fill(`${semester}-later`);
     await p.getByLabel('Academic year').fill('2027–2028');
+    await p.getByLabel('Timezone', { exact: true }).fill(offeringZone);
     await p.getByLabel('Term starts').fill(localDate(90));
     await p.getByLabel('Term ends').fill(localDate(120));
+    await p.getByLabel('Find source offering', { exact: true }).fill(semester);
     await p.getByLabel('Copy configuration from').selectOption(created.id);
     const later = await action(p, '/offerings', 'POST', () =>
       p.getByRole('button', { name: 'Create offering', exact: true }).click(),
     );
+    await p.getByLabel('Search courses', { exact: true }).fill(`${semester}-later`);
     await p.locator(`a[href="/offerings/${later.id}"]`).first().click();
     await p.getByRole('tab', { name: 'Groups', exact: true }).click();
     await expect(p.getByRole('heading', { name: 'No groups yet', exact: true })).toBeVisible();

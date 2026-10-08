@@ -15,3 +15,5 @@ No-review stages can be closed with `finalize-input` to reach REVIEW_COMPLETED. 
 A full submission reopen increments the review cycle and clears current workflow pointers while preserving old PDFs, assignments, reviews, rebuttals, similarity checks and grades. Old similarity approval cannot authorize publication for a newly submitted version.
 
 Only a finalized, published-grade report from a CLOSED or ARCHIVED offering can be approved for the reference archive. Approval pins the exact version and download policy. Replacing or revoking a publication preserves approval history and immediately removes its reference access. Personal historical access is independent of public reference approval.
+
+Offering term dates and academic deadline inputs/displays use the offering timezone. Browser timezone differences do not change the intended instant. For a skipped or repeated daylight-saving hour, forms require a time outside that hour rather than guessing a deadline. Backend storage/guards use UTC instants. Generic notification/audit timestamps are shown in the browser timezone with an explicit timezone label.

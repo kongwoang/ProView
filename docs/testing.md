@@ -55,3 +55,5 @@ Container/S3 verification runs `bash scripts/verify-containers.sh` from a clean 
 | E10 Authorization | Actual direct file requests from browser contexts reject an unapproved proposal and unrelated private final report  |
 
 OpenAPI generation/drift uses the built API without a database or listening socket. Response schema coverage is reported rather than inferred from route presence. Auth/profile/error/notification types are generated; other domain response shapes remain pending. `pnpm test:backup` runs only on a disposable local/test source with PostgreSQL client/container tools; see [backup and recovery](backup-recovery.md).
+
+The lifecycle browser context uses UTC while its offering uses America/New_York; it asserts the submitted term-start instant equals the independently captured UTC instant, edits all stage windows in offering time, and completes the full workflow across a later cohort. Pure time tests cover winter/summer offsets and reject DST gaps/repeated hours. Profile tests follow real pagination to older academic evidence, and copy-source selection uses its independent UI search.

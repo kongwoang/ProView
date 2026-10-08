@@ -96,7 +96,9 @@ export function ProjectPage({ id }: { id: string }) {
                   <div className="list-row" key={stage.id}>
                     <div className="row-content">
                       <h3>{stage.name}</h3>
-                      <p className="muted">Due {dateTime(stage.submissionDeadline)}</p>
+                      <p className="muted">
+                        Due {dateTime(stage.submissionDeadline, project.offering.timezone)}
+                      </p>
                       {submission && <StatusBadge status={submission.status} />}
                     </div>
                     {submission ? (
@@ -195,7 +197,7 @@ export function SubmissionPage({ id }: { id: string }) {
             <PageHeader
               eyebrow={`${submission.offering.course.code} · ${submission.stage.name}`}
               title={submission.project.title}
-              description={`${submission.project.group?.name ?? submission.group?.name ?? ''} · Submission deadline ${dateTime(submission.stage.submissionDeadline)}`}
+              description={`${submission.project.group?.name ?? submission.group?.name ?? ''} · Submission deadline ${dateTime(submission.stage.submissionDeadline, submission.offering.timezone)}`}
               actions={
                 <>
                   <StatusBadge status={submission.status} />
@@ -222,9 +224,13 @@ export function SubmissionPage({ id }: { id: string }) {
                     ?.versionNumber ?? 'None'}
                 </strong>
               </span>
-              <span>Submitted {dateTime(submission.submittedAt)}</span>
+              <span>
+                Submitted {dateTime(submission.submittedAt, submission.offering.timezone)}
+              </span>
               {submission.reopenUntil && (
-                <span>Reopened until {dateTime(submission.reopenUntil)}</span>
+                <span>
+                  Reopened until {dateTime(submission.reopenUntil, submission.offering.timezone)}
+                </span>
               )}
             </div>
             {action.feedback}
@@ -366,7 +372,8 @@ export function SubmissionPage({ id }: { id: string }) {
                       </button>
                     </div>
                     <p className="muted">
-                      {dateTime(version.uploadedAt)} · {version.file?.displayName}
+                      {dateTime(version.uploadedAt, submission.offering.timezone)} ·{' '}
+                      {version.file?.displayName}
                     </p>
                     <p className="review-content">{version.changeNote}</p>
                     {version.file?.sha256 && (
@@ -423,7 +430,7 @@ export function SubmissionPage({ id }: { id: string }) {
                           api.post(`/submissions/${id}/reopen`, {
                             revision: submission.revision,
                             reason: formText(f, 'reason'),
-                            until: formDate(f, 'until'),
+                            until: formDate(f, 'until', submission.offering.timezone),
                           }),
                         'Submission window reopened.',
                       );
@@ -432,7 +439,10 @@ export function SubmissionPage({ id }: { id: string }) {
                   <Field label="Reason">
                     <textarea name="reason" required />
                   </Field>
-                  <Field label="Allow changes until">
+                  <Field
+                    label="Allow changes until"
+                    help={`Time in ${submission.offering.timezone}`}
+                  >
                     <input type="datetime-local" name="until" required />
                   </Field>
                   <SpinnerButton type="submit" loading={action.pending}>

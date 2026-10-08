@@ -61,9 +61,30 @@ test('student session refresh, role boundaries, PDF and no external runtime requ
   await expect(
     page.getByRole('heading', { name: 'Your academic history', exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Campus Resource Booking', exact: true }),
-  ).toBeVisible();
+  // Repeated lifecycle runs can create newer completed projects. Older evidence
+  // must remain reachable through the profile's real pagination.
+  const historicalProject = page.getByRole('heading', {
+    name: 'Campus Resource Booking',
+    exact: true,
+  });
+  await expect(page.locator('.project-card h3').first()).toBeVisible();
+  for (let pageNumber = 1; pageNumber < 50 && !(await historicalProject.count()); pageNumber++) {
+    const next = page
+      .getByRole('navigation', { name: 'Page navigation', exact: true })
+      .getByRole('button', { name: 'Next', exact: true });
+    if (!(await next.count()) || !(await next.isEnabled())) break;
+    const pending = page.waitForResponse(
+      (response) =>
+        response.url().includes('/archive/own?') && response.request().method() === 'GET',
+    );
+    const [, response] = await Promise.all([next.click(), pending]);
+    expect(response.ok()).toBe(true);
+    const data = await response.json();
+    await expect(
+      page.getByRole('heading', { name: data.items[0].title, exact: true }),
+    ).toBeVisible();
+  }
+  await expect(historicalProject).toBeVisible();
   await expect(
     page
       .locator('.project-card')

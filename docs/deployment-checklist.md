@@ -14,4 +14,4 @@ The implemented target is local production builds. No external deployment has be
 
 Production containers and S3/MinIO passed the [28377f3 CI run](https://github.com/kongwoang/ProView/actions/runs/37718123514) through Nginx on disposable infrastructure. Remaining production work is explicit: TLS deployment, distributed rate-limit configuration, production backup scheduling/retention and recovery on the selected host, and representative load tests. These do not prevent an opt-in local demonstration.
 
-The repository now includes snapshot-based DB/object backup and restore commands plus automated local/S3 recovery rehearsals; see [backup-recovery.md](backup-recovery.md). CI result evidence must be checked before claiming the new rehearsal passes.
+The repository now includes snapshot-based DB/object backup and restore commands plus automated local/S3 recovery rehearsals; see [backup-recovery.md](backup-recovery.md). Both local and S3 rehearsals passed on [8563118](https://github.com/kongwoang/ProView/actions/runs/37752007606), including39 tables/21 PDFs and corruption/missing-file/occupied-target refusals.

@@ -40,7 +40,7 @@ export class DashboardController {
           ],
           status: { in: ['ASSIGNED', 'IN_PROGRESS', 'COI_REQUESTED'] },
         },
-        include: { submission: { include: { project: true, stage: true } } },
+        include: { submission: { include: { project: true, stage: true, offering: true } } },
         orderBy: { createdAt: 'desc' },
       }),
       this.db.notification.count({ where: { recipientId: actor.id, readAt: null } }),
@@ -88,6 +88,7 @@ export class DashboardController {
               courseCode: m.offering.course.code,
               type: d.type,
               at: d.at,
+              timezone: m.offering.timezone,
             })),
         ),
       )
@@ -128,6 +129,7 @@ export class DashboardController {
         projectTitle: a.submission.project.title,
         stageName: a.submission.stage.name,
         reviewDeadline: a.submission.stage.reviewDeadline,
+        timezone: a.submission.offering.timezone,
       })),
       notifications: { unread },
       counts: {
