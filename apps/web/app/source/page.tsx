@@ -1,0 +1,32 @@
+import Link from 'next/link';
+
+export default function SourcePage() {
+  return (
+    <main className="legal-page">
+      <Link href="/dashboard">← Back to workspace</Link>
+      <h1>Source &amp; acknowledgments</h1>
+      <p>
+        ProView is a course-project review workspace. Its frontend is derived from the official
+        OpenReview Web application.
+      </p>
+      <p>
+        Copyright © 2019–2026 OpenReview. The frontend is available under the GNU Affero General
+        Public License, version 3 or later.
+      </p>
+      <p>
+        <a href="https://github.com/kongwoang/ProView">ProView corresponding source</a> ·{' '}
+        <a href="https://github.com/kongwoang/ProView/blob/main/apps/web/LICENSE.md">
+          AGPL license
+        </a>{' '}
+        ·{' '}
+        <a href="https://github.com/openreview/openreview-web/tree/3548cc359a3c8e3048112d10de39f45c1f0e7cc9">
+          Pinned upstream source
+        </a>
+      </p>
+      <p>
+        The source includes the ProView modifications and upstream attribution. Operators who modify
+        this application must offer the corresponding source for their deployed version.
+      </p>
+    </main>
+  );
+}

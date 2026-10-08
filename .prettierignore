@@ -1,0 +1,13 @@
+node_modules
+pnpm-lock.yaml
+apps/web/upstream
+apps/web/LICENSE.md
+apps/web/.next
+apps/api/dist
+apps/api/prisma/migrations
+docs/specifications
+.local
+.data
+coverage
+test-results
+playwright-report

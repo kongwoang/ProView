@@ -1,0 +1,44 @@
+{
+  "name": "proview",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "pnpm": ">=10.34.6 <11"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @proview/api --filter @proview/web dev",
+    "build": "pnpm db:generate && pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "db:generate": "pnpm --filter @proview/api db:generate",
+    "db:migrate": "pnpm --filter @proview/api db:migrate",
+    "db:seed": "pnpm --filter @proview/api db:seed",
+    "infra:up": "docker compose up -d postgres minio minio-init",
+    "infra:down": "docker compose down",
+    "start": "pnpm --parallel --filter @proview/api --filter @proview/web start",
+    "smoke": "node scripts/smoke.mjs",
+    "test:acceptance:courses": "node scripts/acceptance-courses-submissions.mjs",
+    "check:offline": "node scripts/check-offline.mjs",
+    "test:acceptance": "node scripts/run-acceptance.mjs",
+    "test:e2e": "playwright test",
+    "test:acceptance:grading": "node scripts/acceptance-auth-grading-archive.mjs",
+    "start:web": "node scripts/start-web.mjs",
+    "admin:bootstrap": "pnpm --filter @proview/api exec node scripts/bootstrap-admin.cjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.1",
+    "eslint": "9.39.5",
+    "prettier": "3.9.9",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1"
+  }
+}

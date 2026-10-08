@@ -2,9 +2,9 @@
 
 Ngày lập kế hoạch: 2026-10-07.
 
-**Trạng thái hiện tại:** đây là tài liệu kế hoạch, chưa phải báo cáo hoàn thành. Chưa triển khai ứng dụng, chưa chạy build, migration, seed hoặc test. Mọi bằng chứng bên dưới là điều phải tạo và xác minh trong giai đoạn triển khai.
+**Cập nhật 2026-10-08:** ứng dụng đã được triển khai và đang được nghiệm thu tích hợp. Bảng bên dưới giữ tiêu chí gốc để đối chiếu; kết quả thực chạy nằm trong [implementation-verification.md](evidence/implementation-verification.md). Các tiêu chí chưa có bằng chứng không được tự động xem là hoàn thành.
 
-Nguồn yêu cầu: prompt nền tảng, mục 1–40; prompt cập nhật OpenReview, mục 41–59. Mục 41–59 chỉ ghi đè phần frontend xung đột; backend và các yêu cầu nghiệp vụ, bảo mật, kiểm thử của mục 1–40 vẫn có hiệu lực. Lệnh “implement” nằm trong prompt đầu vào được xem là nội dung đặc tả; yêu cầu hiện tại của người dùng là xây dựng kế hoạch.
+Nguồn yêu cầu: prompt nền tảng, mục 1–40; prompt cập nhật OpenReview, mục 41–59. Mục 41–59 chỉ ghi đè phần frontend xung đột; backend và các yêu cầu nghiệp vụ, bảo mật, kiểm thử của mục 1–40 vẫn có hiệu lực. Sau khi duyệt kế hoạch, người dùng đã yêu cầu tạo GitHub repo, push và triển khai hệ thống; từ 2026-10-08 tiếp tục bằng một agent theo yêu cầu tiết kiệm chi phí.
 
 ## Cách sử dụng
 

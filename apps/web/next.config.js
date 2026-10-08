@@ -1,33 +1,24 @@
-const nextBuildId = require('next-build-id')
+/** Next App Router retained from the OpenReview frontend; ProView configuration. */
+const apiOrigin = process.env.PROVIEW_API_INTERNAL_URL || 'http://127.0.0.1:3001';
 
 module.exports = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  env: {
-    SERVER_ENV: process.env.NODE_ENV,
-    API_URL: process.env.API_URL,
-    API_V2_URL: process.env.API_V2_URL,
-    ACCESS_TOKEN_NAME: process.env.ACCESS_TOKEN_NAME,
-    REFRESH_TOKEN_NAME: process.env.REFRESH_TOKEN_NAME,
-    USER_TOKEN_NAME: process.env.USER_TOKEN_NAME,
-    CLEARANCE_COOKIE_NAME: process.env.CLEARANCE_COOKIE_NAME,
-    SUPER_USER: process.env.SUPER_USER,
-    USE_DBLP_VENUES: process.env.USE_DBLP_VENUES,
-    GA_PROPERTY_ID: process.env.GA_PROPERTY_ID,
-    TURNSTILE_SITEKEY: process.env.TURNSTILE_SITEKEY,
-  },
-  generateBuildId: () => nextBuildId({ dir: __dirname, describe: true }),
   poweredByHeader: false,
-  transpilePackages: ['marked'],
-  reactStrictMode: false,
-  logging: {
-    fetches: {
-      fullUrl: true,
-    },
+  reactStrictMode: true,
+  output: 'standalone',
+  outputFileTracingRoot: require('node:path').join(__dirname, '../..'),
+  async rewrites() {
+    return [{ source: '/api/v1/:path*', destination: `${apiOrigin}/api/v1/:path*` }];
   },
-  sassOptions: {
-    silenceDeprecations: ['legacy-js-api'],
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'same-origin' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        ],
+      },
+    ];
   },
-  htmlLimitedBots: '.*',
-}
+};

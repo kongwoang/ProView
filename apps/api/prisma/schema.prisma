@@ -1,0 +1,829 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum MembershipRole {
+  INSTRUCTOR
+  STUDENT
+}
+
+enum OfferingStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum AnonymityMode {
+  NAMED
+  ANONYMOUS_TO_AUTHORS
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  REBUTTAL_OPEN
+  REVIEW_COMPLETED
+  FINALIZED
+}
+
+enum FileState {
+  PENDING
+  READY
+  FAILED
+}
+
+enum ReviewerType {
+  GROUP
+  INSTRUCTOR
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COI_REQUESTED
+  REASSIGNMENT_APPROVED
+  REASSIGNED
+  SUBMITTED
+  CANCELLED
+}
+
+enum ConflictStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+}
+
+enum RebuttalStatus {
+  DRAFT
+  FINALIZED
+  EXPIRED
+}
+
+enum SimilarityStatus {
+  PENDING
+  SUBMITTED_EXTERNALLY
+  COMPLETED
+  FAILED
+  WAIVED
+}
+
+enum GradeStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum PlanStatus {
+  READY
+  INFEASIBLE
+  TIME_LIMIT
+  APPLIED
+  EXPIRED
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(254)
+  username     String   @unique @db.VarChar(80)
+  displayName  String   @db.VarChar(160)
+  passwordHash String
+  role         Role     @default(STUDENT)
+  isActive     Boolean  @default(true)
+  tokenVersion Int      @default(0)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  authSessions  AuthSession[]
+  memberships   CourseMembership[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([role, isActive])
+}
+
+model AuthSession {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @db.Uuid
+  tokenHash String       @unique
+  familyId  String       @default(uuid()) @db.Uuid
+  parentId  String?      @unique @db.Uuid
+  expiresAt DateTime     @db.Timestamptz(3)
+  revokedAt DateTime?    @db.Timestamptz(3)
+  rotatedAt DateTime?    @db.Timestamptz(3)
+  userAgent String?      @db.VarChar(512)
+  ipAddress String?      @db.VarChar(64)
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  parent    AuthSession? @relation("SessionRotation", fields: [parentId], references: [id], onDelete: Restrict)
+  successor AuthSession? @relation("SessionRotation")
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model Course {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique @db.VarChar(32)
+  title       String           @db.VarChar(200)
+  description String           @default("")
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  offerings   CourseOffering[]
+}
+
+model CourseOffering {
+  id              String                @id @default(uuid()) @db.Uuid
+  courseId        String                @db.Uuid
+  semester        String                @db.VarChar(80)
+  academicYear    String                @db.VarChar(32)
+  termStartAt     DateTime              @db.Timestamptz(3)
+  termEndAt       DateTime              @db.Timestamptz(3)
+  timezone        String                @default("Asia/Ho_Chi_Minh") @db.VarChar(80)
+  status          OfferingStatus        @default(DRAFT)
+  anonymityMode   AnonymityMode         @default(ANONYMOUS_TO_AUTHORS)
+  revision        Int                   @default(0)
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+  course          Course                @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  memberships     CourseMembership[]
+  groups          ProjectGroup[]
+  stages          SubmissionStage[]
+  rubrics         Rubric[]
+  projects        Project[]
+  submissions     Submission[]
+  assignmentPlans AssignmentPlan[]
+  rosterImports   RosterImportPreview[]
+
+  @@unique([courseId, semester, academicYear])
+  @@index([courseId, status, termStartAt])
+}
+
+model CourseMembership {
+  id               String         @id @default(uuid()) @db.Uuid
+  offeringId       String         @db.Uuid
+  userId           String         @db.Uuid
+  role             MembershipRole
+  joinedAt         DateTime       @default(now()) @db.Timestamptz(3)
+  endedAt          DateTime?      @db.Timestamptz(3)
+  offering         CourseOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  groupMemberships GroupMember[]
+
+  @@unique([id, offeringId, role, userId])
+  @@index([userId, endedAt])
+  @@index([offeringId, role, endedAt])
+}
+
+model ProjectGroup {
+  id                 String               @id @default(uuid()) @db.Uuid
+  offeringId         String               @db.Uuid
+  name               String               @db.VarChar(120)
+  membershipLockedAt DateTime?            @db.Timestamptz(3)
+  revision           Int                  @default(0)
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @db.Timestamptz(3)
+  offering           CourseOffering       @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  members            GroupMember[]
+  project            Project?
+  assignments        ReviewerAssignment[]
+
+  @@unique([offeringId, name])
+  @@unique([id, offeringId])
+}
+
+model GroupMember {
+  id             String           @id @default(uuid()) @db.Uuid
+  groupId        String           @db.Uuid
+  membershipId   String           @db.Uuid
+  offeringId     String           @db.Uuid
+  userId         String           @db.Uuid
+  membershipRole MembershipRole   @default(STUDENT)
+  joinedAt       DateTime         @default(now()) @db.Timestamptz(3)
+  leftAt         DateTime?        @db.Timestamptz(3)
+  changeReason   String?
+  changedById    String?          @db.Uuid
+  group          ProjectGroup     @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  membership     CourseMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict)
+
+  @@index([groupId, leftAt])
+  @@index([membershipId])
+  @@index([userId, offeringId])
+}
+
+model Project {
+  id           String               @id @default(uuid()) @db.Uuid
+  groupId      String               @unique @db.Uuid
+  offeringId   String               @db.Uuid
+  title        String               @db.VarChar(240)
+  description  String               @default("")
+  createdAt    DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime             @updatedAt @db.Timestamptz(3)
+  group        ProjectGroup         @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  offering     CourseOffering       @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  submissions  Submission[]
+  publications ArchivePublication[]
+
+  @@unique([id, offeringId])
+  @@index([offeringId])
+}
+
+model Rubric {
+  id          String           @id @default(uuid()) @db.Uuid
+  offeringId  String           @db.Uuid
+  name        String           @db.VarChar(160)
+  description String           @default("")
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @db.Timestamptz(3)
+  offering    CourseOffering   @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  revisions   RubricRevision[]
+
+  @@unique([id, offeringId])
+  @@index([offeringId])
+}
+
+model RubricRevision {
+  id                    String               @id @default(uuid()) @db.Uuid
+  rubricId              String               @db.Uuid
+  offeringId            String               @db.Uuid
+  revisionNumber        Int
+  publishedAt           DateTime?            @db.Timestamptz(3)
+  requireRecommendation Boolean              @default(false)
+  recommendationOptions Json                 @default("[]")
+  requireOverallComment Boolean              @default(true)
+  createdAt             DateTime             @default(now()) @db.Timestamptz(3)
+  rubric                Rubric               @relation(fields: [rubricId], references: [id], onDelete: Restrict)
+  criteria              RubricCriterion[]
+  stages                SubmissionStage[]
+  assignments           ReviewerAssignment[]
+  reviewRevisions       ReviewRevision[]
+  gradeRevisions        GradeRevision[]
+
+  @@unique([rubricId, revisionNumber])
+  @@unique([id, offeringId])
+}
+
+model RubricCriterion {
+  id               String                    @id @default(uuid()) @db.Uuid
+  rubricRevisionId String                    @db.Uuid
+  title            String                    @db.VarChar(160)
+  description      String                    @default("")
+  weight           Decimal                   @db.Decimal(8, 4)
+  scoreMin         Decimal                   @default(0) @db.Decimal(8, 4)
+  scoreMax         Decimal                   @default(10) @db.Decimal(8, 4)
+  sequence         Int
+  required         Boolean                   @default(true)
+  requireComment   Boolean                   @default(false)
+  revision         RubricRevision            @relation(fields: [rubricRevisionId], references: [id], onDelete: Restrict)
+  reviewResponses  ReviewCriterionResponse[]
+  gradeScores      GradeCriterionScore[]
+
+  @@unique([rubricRevisionId, sequence])
+  @@unique([id, rubricRevisionId])
+}
+
+model SubmissionStage {
+  id                     String           @id @default(uuid()) @db.Uuid
+  offeringId             String           @db.Uuid
+  rubricRevisionId       String           @db.Uuid
+  name                   String           @db.VarChar(120)
+  sequence               Int
+  openAt                 DateTime         @db.Timestamptz(3)
+  submissionDeadline     DateTime         @db.Timestamptz(3)
+  reviewDeadline         DateTime?        @db.Timestamptz(3)
+  rebuttalDeadline       DateTime?        @db.Timestamptz(3)
+  allowReviews           Boolean          @default(true)
+  allowRebuttal          Boolean          @default(true)
+  requireSimilarityCheck Boolean          @default(false)
+  peerReviewCount        Int              @default(2)
+  revision               Int              @default(0)
+  createdAt              DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime         @updatedAt @db.Timestamptz(3)
+  offering               CourseOffering   @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  rubricRevision         RubricRevision   @relation(fields: [rubricRevisionId], references: [id], onDelete: Restrict)
+  submissions            Submission[]
+  assignmentPlans        AssignmentPlan[]
+
+  @@unique([offeringId, sequence])
+  @@unique([id, offeringId])
+}
+
+model Submission {
+  id                   String               @id @default(uuid()) @db.Uuid
+  projectId            String               @db.Uuid
+  stageId              String               @db.Uuid
+  offeringId           String               @db.Uuid
+  status               SubmissionStatus     @default(DRAFT)
+  latestDraftVersionId String?              @unique @db.Uuid
+  submittedVersionId   String?              @unique @db.Uuid
+  submittedById        String?              @db.Uuid
+  submittedAt          DateTime?            @db.Timestamptz(3)
+  inputLockedAt        DateTime?            @db.Timestamptz(3)
+  reviewsReleasedAt    DateTime?            @db.Timestamptz(3)
+  finalizedAt          DateTime?            @db.Timestamptz(3)
+  reopenUntil          DateTime?            @db.Timestamptz(3)
+  reviewCycle          Int                  @default(1)
+  revision             Int                  @default(0)
+  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @db.Timestamptz(3)
+  project              Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  stage                SubmissionStage      @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  offering             CourseOffering       @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  versions             SubmissionVersion[]  @relation("SubmissionVersions")
+  latestDraftVersion   SubmissionVersion?   @relation("LatestDraftVersion", fields: [latestDraftVersionId], references: [id], onDelete: Restrict)
+  submittedVersion     SubmissionVersion?   @relation("SubmittedVersion", fields: [submittedVersionId], references: [id], onDelete: Restrict)
+  assignments          ReviewerAssignment[]
+  reviews              Review[]
+  rebuttals            Rebuttal[]
+  discussions          DiscussionMessage[]
+  grade                Grade?
+
+  @@unique([projectId, stageId])
+  @@unique([id, offeringId])
+  @@unique([id, projectId])
+  @@index([stageId, status])
+  @@index([offeringId, status])
+}
+
+model SubmissionVersion {
+  id              String                    @id @default(uuid()) @db.Uuid
+  submissionId    String                    @db.Uuid
+  versionNumber   Int
+  uploadedById    String                    @db.Uuid
+  uploadedAt      DateTime                  @default(now()) @db.Timestamptz(3)
+  changeNote      String                    @default("")
+  submission      Submission                @relation("SubmissionVersions", fields: [submissionId], references: [id], onDelete: Restrict)
+  latestDraftOf   Submission?               @relation("LatestDraftVersion")
+  submittedOf     Submission?               @relation("SubmittedVersion")
+  file            SubmissionFile?
+  authors         SubmissionVersionAuthor[]
+  assignments     ReviewerAssignment[]
+  similarityCheck SimilarityCheck?
+  gradeRevisions  GradeRevision[]
+  publications    ArchivePublication[]
+
+  @@unique([submissionId, versionNumber])
+  @@unique([id, submissionId])
+  @@index([uploadedById])
+}
+
+model SubmissionVersionAuthor {
+  id                  String            @id @default(uuid()) @db.Uuid
+  submissionVersionId String            @db.Uuid
+  userId              String            @db.Uuid
+  groupMemberId       String            @db.Uuid
+  capturedAt          DateTime          @default(now()) @db.Timestamptz(3)
+  version             SubmissionVersion @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([submissionVersionId, userId])
+  @@index([userId])
+}
+
+model SubmissionFile {
+  id                  String            @id @default(uuid()) @db.Uuid
+  submissionVersionId String            @unique @db.Uuid
+  displayName         String            @db.VarChar(255)
+  mimeType            String            @default("application/pdf") @db.VarChar(100)
+  sizeBytes           Int
+  sha256              String            @db.VarChar(64)
+  storageKey          String            @unique
+  state               FileState         @default(PENDING)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  version             SubmissionVersion @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+
+  @@index([state, createdAt])
+}
+
+model ReviewerAssignment {
+  id                   String                          @id @default(uuid()) @db.Uuid
+  submissionId         String                          @db.Uuid
+  submissionVersionId  String                          @db.Uuid
+  offeringId           String                          @db.Uuid
+  rubricRevisionId     String                          @db.Uuid
+  reviewCycle          Int
+  reviewerType         ReviewerType
+  reviewerGroupId      String?                         @db.Uuid
+  reviewerUserId       String?                         @db.Uuid
+  status               AssignmentStatus                @default(ASSIGNED)
+  required             Boolean                         @default(true)
+  aliasNumber          Int
+  previousAssignmentId String?                         @unique @db.Uuid
+  assignedById         String                          @db.Uuid
+  cancelledReason      String?
+  createdAt            DateTime                        @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                        @updatedAt @db.Timestamptz(3)
+  submission           Submission                      @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  version              SubmissionVersion               @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+  rubricRevision       RubricRevision                  @relation(fields: [rubricRevisionId], references: [id], onDelete: Restrict)
+  reviewerGroup        ProjectGroup?                   @relation(fields: [reviewerGroupId], references: [id], onDelete: Restrict)
+  previousAssignment   ReviewerAssignment?             @relation("AssignmentReplacement", fields: [previousAssignmentId], references: [id], onDelete: Restrict)
+  replacement          ReviewerAssignment?             @relation("AssignmentReplacement")
+  conflicts            ConflictOfInterestDeclaration[]
+  review               Review?
+
+  @@unique([submissionId, reviewCycle, aliasNumber])
+  @@unique([id, submissionId, submissionVersionId, rubricRevisionId, reviewCycle])
+  @@index([reviewerGroupId, status])
+  @@index([reviewerUserId, status])
+  @@index([offeringId, status])
+  @@index([submissionVersionId])
+  @@index([rubricRevisionId])
+}
+
+model ConflictOfInterestDeclaration {
+  id                       String             @id @default(uuid()) @db.Uuid
+  assignmentId             String             @db.Uuid
+  declaredById             String             @db.Uuid
+  reason                   String
+  status                   ConflictStatus     @default(PENDING)
+  previousAssignmentStatus AssignmentStatus
+  decidedById              String?            @db.Uuid
+  decidedAt                DateTime?          @db.Timestamptz(3)
+  decisionNote             String?
+  createdAt                DateTime           @default(now()) @db.Timestamptz(3)
+  assignment               ReviewerAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+
+  @@index([assignmentId])
+  @@index([status, createdAt])
+}
+
+model Review {
+  id                  String                   @id @default(uuid()) @db.Uuid
+  assignmentId        String                   @unique @db.Uuid
+  submissionId        String                   @db.Uuid
+  submissionVersionId String                   @db.Uuid
+  rubricRevisionId    String                   @db.Uuid
+  reviewCycle         Int
+  draftRevisionId     String?                  @unique @db.Uuid
+  submittedRevisionId String?                  @unique @db.Uuid
+  releasedAt          DateTime?                @db.Timestamptz(3)
+  supersededAt        DateTime?                @db.Timestamptz(3)
+  createdAt           DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                 @updatedAt @db.Timestamptz(3)
+  assignment          ReviewerAssignment       @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  submission          Submission               @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  revisions           ReviewRevision[]         @relation("ReviewRevisions")
+  draftRevision       ReviewRevision?          @relation("ReviewDraft", fields: [draftRevisionId], references: [id], onDelete: Restrict)
+  submittedRevision   ReviewRevision?          @relation("ReviewSubmitted", fields: [submittedRevisionId], references: [id], onDelete: Restrict)
+  rebuttalResponses   RebuttalReviewResponse[]
+  discussions         DiscussionMessage[]
+
+  @@unique([id, submissionId, reviewCycle])
+  @@unique([id, rubricRevisionId])
+  @@index([submissionId, reviewCycle])
+}
+
+model ReviewRevision {
+  id                       String                    @id @default(uuid()) @db.Uuid
+  reviewId                 String                    @db.Uuid
+  rubricRevisionId         String                    @db.Uuid
+  revisionNumber           Int
+  revision                 Int                       @default(0)
+  status                   ReviewStatus              @default(DRAFT)
+  strengths                String                    @default("")
+  weaknesses               String                    @default("")
+  overallComment           String                    @default("")
+  recommendation           String?
+  submittedById            String?                   @db.Uuid
+  submittedAt              DateTime?                 @db.Timestamptz(3)
+  correctionReason         String?
+  correctionAuthorizedById String?                   @db.Uuid
+  correctionDeadline       DateTime?                 @db.Timestamptz(3)
+  createdAt                DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime                  @updatedAt @db.Timestamptz(3)
+  review                   Review                    @relation("ReviewRevisions", fields: [reviewId], references: [id], onDelete: Restrict)
+  rubricRevision           RubricRevision            @relation(fields: [rubricRevisionId], references: [id], onDelete: Restrict)
+  draftOf                  Review?                   @relation("ReviewDraft")
+  submittedOf              Review?                   @relation("ReviewSubmitted")
+  responses                ReviewCriterionResponse[]
+
+  @@unique([reviewId, revisionNumber])
+  @@unique([id, reviewId])
+  @@unique([id, rubricRevisionId])
+  @@index([rubricRevisionId])
+}
+
+model ReviewCriterionResponse {
+  id               String          @id @default(uuid()) @db.Uuid
+  reviewRevisionId String          @db.Uuid
+  criterionId      String          @db.Uuid
+  rubricRevisionId String          @db.Uuid
+  score            Decimal         @db.Decimal(8, 4)
+  comment          String          @default("")
+  reviewRevision   ReviewRevision  @relation(fields: [reviewRevisionId], references: [id], onDelete: Restrict)
+  criterion        RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+
+  @@unique([reviewRevisionId, criterionId])
+  @@index([criterionId])
+}
+
+model Rebuttal {
+  id              String                   @id @default(uuid()) @db.Uuid
+  submissionId    String                   @db.Uuid
+  reviewCycle     Int
+  generalResponse String                   @default("")
+  status          RebuttalStatus           @default(DRAFT)
+  authorId        String                   @db.Uuid
+  finalizedAt     DateTime?                @db.Timestamptz(3)
+  reopenUntil     DateTime?                @db.Timestamptz(3)
+  reopenReason    String?
+  reopenedById    String?                  @db.Uuid
+  revision        Int                      @default(0)
+  createdAt       DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                 @updatedAt @db.Timestamptz(3)
+  submission      Submission               @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  responses       RebuttalReviewResponse[]
+
+  snapshots RebuttalSnapshot[]
+
+  @@unique([submissionId, reviewCycle])
+  @@unique([id, submissionId, reviewCycle])
+}
+
+model RebuttalReviewResponse {
+  id           String   @id @default(uuid()) @db.Uuid
+  rebuttalId   String   @db.Uuid
+  reviewId     String   @db.Uuid
+  submissionId String   @db.Uuid
+  reviewCycle  Int
+  content      String
+  rebuttal     Rebuttal @relation(fields: [rebuttalId], references: [id], onDelete: Restrict)
+  review       Review   @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  @@unique([rebuttalId, reviewId])
+  @@index([reviewId])
+}
+
+model DiscussionMessage {
+  id           String     @id @default(uuid()) @db.Uuid
+  submissionId String     @db.Uuid
+  reviewId     String?    @db.Uuid
+  reviewCycle  Int
+  authorId     String     @db.Uuid
+  content      String
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  review       Review?    @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  @@index([submissionId, reviewCycle, createdAt])
+  @@index([reviewId])
+}
+
+model SimilarityCheck {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  submissionVersionId   String                   @unique @db.Uuid
+  status                SimilarityStatus         @default(PENDING)
+  percentage            Decimal?                 @db.Decimal(5, 2)
+  resultDate            DateTime?                @db.Timestamptz(3)
+  notes                 String                   @default("")
+  reason                String?
+  submittedExternallyAt DateTime?                @db.Timestamptz(3)
+  updatedById           String?                  @db.Uuid
+  revision              Int                      @default(0)
+  createdAt             DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                 @updatedAt @db.Timestamptz(3)
+  version               SubmissionVersion        @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+  history               SimilarityCheckHistory[]
+  resultFiles           SimilarityResultFile[]
+
+  @@index([status, createdAt])
+}
+
+model SimilarityCheckHistory {
+  id                String           @id @default(uuid()) @db.Uuid
+  similarityCheckId String           @db.Uuid
+  revision          Int
+  status            SimilarityStatus
+  percentage        Decimal?         @db.Decimal(5, 2)
+  resultDate        DateTime?        @db.Timestamptz(3)
+  notes             String
+  reason            String?
+  actorId           String           @db.Uuid
+  createdAt         DateTime         @default(now()) @db.Timestamptz(3)
+  check             SimilarityCheck  @relation(fields: [similarityCheckId], references: [id], onDelete: Restrict)
+
+  @@unique([similarityCheckId, revision])
+}
+
+model SimilarityResultFile {
+  id                String          @id @default(uuid()) @db.Uuid
+  similarityCheckId String          @db.Uuid
+  displayName       String          @db.VarChar(255)
+  mimeType          String          @default("application/pdf")
+  sizeBytes         Int
+  sha256            String          @db.VarChar(64)
+  storageKey        String          @unique
+  state             FileState       @default(PENDING)
+  uploadedById      String          @db.Uuid
+  createdAt         DateTime        @default(now()) @db.Timestamptz(3)
+  check             SimilarityCheck @relation(fields: [similarityCheckId], references: [id], onDelete: Restrict)
+
+  @@index([similarityCheckId, createdAt])
+}
+
+model Grade {
+  id                  String          @id @default(uuid()) @db.Uuid
+  submissionId        String          @unique @db.Uuid
+  draftRevisionId     String?         @unique @db.Uuid
+  publishedRevisionId String?         @unique @db.Uuid
+  createdAt           DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime        @updatedAt @db.Timestamptz(3)
+  submission          Submission      @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  revisions           GradeRevision[] @relation("GradeRevisions")
+  draftRevision       GradeRevision?  @relation("GradeDraft", fields: [draftRevisionId], references: [id], onDelete: Restrict)
+  publishedRevision   GradeRevision?  @relation("GradePublished", fields: [publishedRevisionId], references: [id], onDelete: Restrict)
+
+  @@unique([id, submissionId])
+}
+
+model GradeRevision {
+  id                  String                @id @default(uuid()) @db.Uuid
+  gradeId             String                @db.Uuid
+  submissionId        String                @db.Uuid
+  submissionVersionId String                @db.Uuid
+  rubricRevisionId    String                @db.Uuid
+  revisionNumber      Int
+  revision            Int                   @default(0)
+  status              GradeStatus           @default(DRAFT)
+  calculatedOverall   Decimal?              @db.Decimal(5, 2)
+  overall             Decimal?              @db.Decimal(5, 2)
+  overrideReason      String?
+  feedback            String                @default("")
+  graderId            String                @db.Uuid
+  publishedById       String?               @db.Uuid
+  publishedAt         DateTime?             @db.Timestamptz(3)
+  correctionReason    String?
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  grade               Grade                 @relation("GradeRevisions", fields: [gradeId], references: [id], onDelete: Restrict)
+  version             SubmissionVersion     @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+  rubricRevision      RubricRevision        @relation(fields: [rubricRevisionId], references: [id], onDelete: Restrict)
+  draftOf             Grade?                @relation("GradeDraft")
+  publishedOf         Grade?                @relation("GradePublished")
+  scores              GradeCriterionScore[]
+
+  @@unique([gradeId, revisionNumber])
+  @@unique([id, gradeId])
+  @@unique([id, rubricRevisionId])
+  @@index([submissionVersionId])
+  @@index([rubricRevisionId])
+}
+
+model GradeCriterionScore {
+  id               String          @id @default(uuid()) @db.Uuid
+  gradeRevisionId  String          @db.Uuid
+  criterionId      String          @db.Uuid
+  rubricRevisionId String          @db.Uuid
+  score            Decimal         @db.Decimal(8, 4)
+  comment          String          @default("")
+  gradeRevision    GradeRevision   @relation(fields: [gradeRevisionId], references: [id], onDelete: Restrict)
+  criterion        RubricCriterion @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+
+  @@unique([gradeRevisionId, criterionId])
+  @@index([criterionId])
+}
+
+model ArchivePublication {
+  id                  String            @id @default(uuid()) @db.Uuid
+  projectId           String            @db.Uuid
+  submissionId        String            @db.Uuid
+  submissionVersionId String            @db.Uuid
+  approvedById        String            @db.Uuid
+  approvedAt          DateTime          @default(now()) @db.Timestamptz(3)
+  revokedAt           DateTime?         @db.Timestamptz(3)
+  revokedById         String?           @db.Uuid
+  revokeReason        String?
+  allowDownload       Boolean           @default(false)
+  project             Project           @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  version             SubmissionVersion @relation(fields: [submissionVersionId], references: [id], onDelete: Restrict)
+
+  @@index([projectId, revokedAt])
+  @@index([submissionVersionId])
+}
+
+model Notification {
+  id               String    @id @default(uuid()) @db.Uuid
+  recipientId      String    @db.Uuid
+  type             String    @db.VarChar(80)
+  title            String    @db.VarChar(200)
+  body             String
+  targetUrl        String
+  deduplicationKey String    @unique
+  readAt           DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  recipient        User      @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+
+  @@index([recipientId, readAt, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String   @db.VarChar(120)
+  entityType String   @db.VarChar(80)
+  entityId   String   @db.VarChar(100)
+  requestId  String?  @db.VarChar(100)
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+model OutboxEvent {
+  id             String    @id @default(uuid()) @db.Uuid
+  type           String    @db.VarChar(100)
+  payload        Json
+  idempotencyKey String    @unique
+  availableAt    DateTime  @default(now()) @db.Timestamptz(3)
+  leaseUntil     DateTime? @db.Timestamptz(3)
+  leaseOwner     String?
+  attempts       Int       @default(0)
+  processedAt    DateTime? @db.Timestamptz(3)
+  lastError      String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([processedAt, availableAt, leaseUntil])
+}
+
+model IdempotencyRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorId     String   @db.Uuid
+  scope       String   @db.VarChar(200)
+  key         String   @db.VarChar(160)
+  requestHash String   @db.VarChar(64)
+  response    Json
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@unique([actorId, scope, key])
+  @@index([expiresAt])
+}
+
+model AssignmentPlan {
+  id           String          @id @default(uuid()) @db.Uuid
+  offeringId   String          @db.Uuid
+  stageId      String          @db.Uuid
+  createdById  String          @db.Uuid
+  status       PlanStatus
+  snapshotHash String          @db.VarChar(64)
+  snapshot     Json
+  result       Json
+  appliedAt    DateTime?       @db.Timestamptz(3)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  expiresAt    DateTime        @db.Timestamptz(3)
+  offering     CourseOffering  @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  stage        SubmissionStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
+
+  @@index([offeringId, createdAt])
+  @@index([stageId])
+}
+
+model RosterImportPreview {
+  id               String         @id @default(uuid()) @db.Uuid
+  offeringId       String         @db.Uuid
+  createdById      String         @db.Uuid
+  offeringRevision Int
+  inputHash        String         @db.VarChar(64)
+  rows             Json
+  summary          Json
+  committedAt      DateTime?      @db.Timestamptz(3)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  expiresAt        DateTime       @db.Timestamptz(3)
+  offering         CourseOffering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+
+  @@index([offeringId, createdAt])
+}
+
+model RebuttalSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  rebuttalId      String   @db.Uuid
+  revision        Int
+  generalResponse String
+  responses       Json
+  finalizedAt     DateTime @db.Timestamptz(3)
+  authorId        String   @db.Uuid
+  rebuttal        Rebuttal @relation(fields: [rebuttalId], references: [id], onDelete: Restrict)
+
+  @@unique([rebuttalId, revision])
+}

@@ -15,8 +15,7 @@ playwright-report/
 test-results/
 *.log
 *.tsbuildinfo
-storage/
-uploads/
+/storage/
+/uploads/
 .data/
 .runtime/
-
