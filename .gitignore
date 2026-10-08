@@ -20,3 +20,4 @@ test-results/
 /uploads/
 .data/
 .runtime/
+/apps/web/public/source/

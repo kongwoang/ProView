@@ -11,5 +11,8 @@ authentication and API transport, accessible components, branding, navigation,
 and removal of conference services. Detailed provenance and modifications are in
 `docs/upstream-openreview.md` and `docs/openreview-adaptation.md` at the repository root.
 
-Corresponding source: https://github.com/kongwoang/ProView. Operators must provide
-the source corresponding to the version they run, including local modifications.
+Corresponding frontend source: `/source/frontend.tar.gz` on the running service,
+with build instructions in `docs/frontend-source.md` inside the archive.
+Development repository: https://github.com/kongwoang/ProView (access may be restricted).
+Operators must provide the source corresponding to the version they run,
+including local modifications.

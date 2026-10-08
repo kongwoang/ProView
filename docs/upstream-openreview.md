@@ -44,7 +44,7 @@ Original automation/deployment files, `.mcp.json`, editor settings and unrelated
 
 ## Source availability
 
-`apps/web/NOTICE.md` and the visible `/source` route preserve attribution and link to https://github.com/kongwoang/ProView. Deployments must make available the corresponding source of the version actually run, including local modifications and build instructions. A link to an inaccessible private repository is not a complete source offer to users without access; operators must make the deployed source accessible or provide it by another compliant means. The REST separation does not itself resolve the license treatment of every part of the resulting application.
+`apps/web/NOTICE.md` and the visible `/source` route preserve attribution. Every frontend build now generates `/source/frontend.tar.gz`, `/source/LICENSE.txt` and `/source/manifest.json` from the same input tree. The download includes the modified frontend, dependency lockfile, shared lint configuration, build/start/source-packaging scripts, attribution and build instructions; it does not require access to the private development repository. An extracted archive was installed with the frozen lockfile and built independently without backend source or runtime data. Operators must keep this source offer aligned with their deployed modifications. The REST separation does not itself resolve the license treatment of every part of the resulting application.
 
 ## Verification
 

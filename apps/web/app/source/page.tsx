@@ -14,11 +14,11 @@ export default function SourcePage() {
         Public License, version 3 or later.
       </p>
       <p>
-        <a href="https://github.com/kongwoang/ProView">ProView corresponding source</a> ·{' '}
-        <a href="https://github.com/kongwoang/ProView/blob/main/apps/web/LICENSE.md">
-          AGPL license
+        <a href="/source/frontend.tar.gz" download>
+          Download ProView frontend source
         </a>{' '}
-        ·{' '}
+        · <a href="/source/LICENSE.txt">AGPL license</a> ·{' '}
+        <a href="/source/manifest.json">Source checksums</a> ·{' '}
         <a href="https://github.com/openreview/openreview-web/tree/3548cc359a3c8e3048112d10de39f45c1f0e7cc9">
           Pinned upstream source
         </a>
@@ -26,6 +26,9 @@ export default function SourcePage() {
       <p>
         The source includes the ProView modifications and upstream attribution. Operators who modify
         this application must offer the corresponding source for their deployed version.
+      </p>
+      <p>
+        The software is provided without warranty; redistribution is permitted under the license.
       </p>
       <p>
         The ProView logo and wordmark follow the project team’s branding. Montserrat is used under
