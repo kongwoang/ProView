@@ -35,13 +35,14 @@ ProView focuses on course projects. Lecture delivery, quizzes, payments, certifi
 
 There are three account roles: **Student**, **Instructor**, and **Administrator**. Author and reviewer are contexts in which a student acts, not separate account types.
 
-| Role or context                 | Responsibilities in the current system                                                                                                                                                                                        |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Student as author**           | Work with their project group, upload and submit PDF versions, read released reviews, write rebuttals, and view published grades.                                                                                             |
-| **Student as reviewer**         | Work on reviews assigned to their group, read the assigned version, declare conflicts of interest, and submit structured feedback.                                                                                            |
-| **Student as reference reader** | Read explicitly approved reports from earlier offerings of the same course when eligible; downloads depend on the publication policy.                                                                                         |
-| **Instructor**                  | Create semester offerings for existing courses; manage their offerings' roster, groups, stages, deadlines, and rubrics; assign and oversee reviews; handle conflicts and reopen requests; publish grades and approve reports. |
-| **Administrator**               | Create and manage accounts and the course catalog, assign additional instructors, inspect system-wide audit records, and perform explicitly authorized staff operations.                                                      |
+| Role or context         | Responsibilities in the current system                                                                                                                                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Student as author**   | Work with their project group, upload and submit PDF versions, read released reviews, write rebuttals, and view published grades.                                                                                             |
+| **Student as reviewer** | Work on reviews assigned to their group, read the assigned version, declare conflicts of interest, and submit structured feedback.                                                                                            |
+| **Instructor**          | Create semester offerings for existing courses; manage their offerings' roster, groups, stages, deadlines, and rubrics; assign and oversee reviews; handle conflicts and reopen requests; publish grades and approve reports. |
+| **Administrator**       | Create and manage accounts and the course catalog, assign additional instructors, inspect system-wide audit records, and perform explicitly authorized staff operations.                                                      |
+
+Students can also access approved reports from previous offerings of the same course when eligible. Downloads depend on the publication policy. This is a Student capability, not a separate role.
 
 Permissions depend on the particular offering, group, assignment, or publication. An instructor does not automatically manage every offering. An administrator is not automatically a reviewer or grader.
 

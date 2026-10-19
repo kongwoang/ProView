@@ -100,6 +100,8 @@ The Drive folder holds working/report material; the repository holds implementat
 9. **Archive approval is explicit.** Closing an offering or publishing a grade does not automatically make a report available to later cohorts.
 10. **Backend policy decides access.** Hiding a button or guessing an entity ID does not grant or revoke permission. Account role alone is insufficient for course-specific actions.
 
+In use case diagrams, connect **Browse approved reference reports** directly to **Student**; do not introduce a separate reference-reader actor. Treat the reference archive as a supporting feature, while keeping submission, review, rebuttal, and grading at the center of the report.
+
 Initial ideas that differ from these rules belong in a change request. Important examples are independent student reviewer assignments, author-nominated reviewers, formal reviewer recognition, a dedicated comments-only review mode, and mandatory assignment only after the submission deadline.
 
 ## 6. Task and report templates
